@@ -1,0 +1,95 @@
+# ==============================================================================
+# Build Tools (Maven & Gradle)
+# ==============================================================================
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+.gradle
+/build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# ==============================================================================
+# Java & Spring Boot Standard
+# ==============================================================================
+*.class
+*.log
+*.ctxt
+.mtj.tmp/
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+
+# Spring Boot generated help file
+HELP.md
+
+# ==============================================================================
+# IDE Specific (IntelliJ, Eclipse, VS Code)
+# ==============================================================================
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# ==============================================================================
+# OS Specific
+# ==============================================================================
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# ==============================================================================
+# SECURITY & LOCAL CONFIG (Critical for SupplyMind)
+# ==============================================================================
+# Ignore local environment variables (where you store Aiven DB URL & Stripe Keys)
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Optional: Ignore application.properties if you put secrets directly in there
+# (Better to use application-dev.properties and ignore that)
+# src/main/resources/application-dev.properties
+# src/main/resources/application-secrets.properties
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
