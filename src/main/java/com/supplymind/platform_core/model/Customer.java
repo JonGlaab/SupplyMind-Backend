@@ -11,7 +11,7 @@ import java.util.Set;
 @Getter
 @Setter
 @Entity
-@Table(name = "customers", schema = "defaultdb")
+@Table(name = "customers")
 public class Customer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,8 +26,7 @@ public class Customer {
     @Column(name = "email")
     private String email;
 
-    @Lob
-    @Column(name = "address")
+    @Column(name = "address", columnDefinition = "TEXT")
     private String address;
 
     @OneToMany(mappedBy = "customer")

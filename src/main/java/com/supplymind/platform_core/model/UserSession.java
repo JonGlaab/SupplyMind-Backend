@@ -14,7 +14,7 @@ import java.time.Instant;
 @Getter
 @Setter
 @Entity
-@Table(name = "user_sessions", schema = "defaultdb", indexes = {
+@Table(name = "user_sessions", indexes = {
         @Index(name = "user_id", columnList = "user_id")
 })
 public class UserSession {

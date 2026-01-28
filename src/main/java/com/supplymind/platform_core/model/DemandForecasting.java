@@ -10,7 +10,7 @@ import java.time.LocalDate;
 @Getter
 @Setter
 @Entity
-@Table(name = "demand_forecasting", schema = "defaultdb", indexes = {
+@Table(name = "demand_forecasting",indexes = {
         @Index(name = "product_id", columnList = "product_id"),
         @Index(name = "warehouse_id", columnList = "warehouse_id")
 })

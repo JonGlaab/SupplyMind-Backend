@@ -13,7 +13,7 @@ import java.util.Set;
 @Getter
 @Setter
 @Entity
-@Table(name = "purchase_orders", schema = "defaultdb", indexes = {
+@Table(name = "purchase_orders",indexes = {
         @Index(name = "supplier_id", columnList = "supplier_id"),
         @Index(name = "warehouse_id", columnList = "warehouse_id"),
         @Index(name = "buyer_id", columnList = "buyer_id")
@@ -36,7 +36,7 @@ public class PurchaseOrder {
     @JoinColumn(name = "buyer_id")
     private User buyer;
 
-    @Lob
+
     @Column(name = "status")
     private String status;
 

@@ -9,7 +9,7 @@ import java.time.Instant;
 @Getter
 @Setter
 @Entity
-@Table(name = "returns", schema = "defaultdb", indexes = {
+@Table(name = "returns",indexes = {
         @Index(name = "po_id", columnList = "po_id")
 })
 public class Return {
@@ -22,11 +22,11 @@ public class Return {
     @JoinColumn(name = "po_id")
     private PurchaseOrder po;
 
-    @Lob
+
     @Column(name = "reason")
     private String reason;
 
-    @Lob
+
     @Column(name = "status")
     private String status;
 

@@ -10,7 +10,7 @@ import java.util.Set;
 @Getter
 @Setter
 @Entity
-@Table(name = "sales_orders", schema = "defaultdb", indexes = {
+@Table(name = "sales_orders",indexes = {
         @Index(name = "customer_id", columnList = "customer_id"),
         @Index(name = "warehouse_id", columnList = "warehouse_id")
 })
@@ -28,7 +28,7 @@ public class SalesOrder {
     @JoinColumn(name = "warehouse_id")
     private Warehouse warehouse;
 
-    @Lob
+
     @Column(name = "status")
     private String status;
 

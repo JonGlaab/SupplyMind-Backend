@@ -11,7 +11,7 @@ import org.hibernate.annotations.OnDeleteAction;
 @Getter
 @Setter
 @Entity
-@Table(name = "two_factor_auth", schema = "defaultdb", indexes = {
+@Table(name = "two_factor_auth",indexes = {
         @Index(name = "user_id", columnList = "user_id")
 })
 public class TwoFactorAuth {
@@ -30,7 +30,7 @@ public class TwoFactorAuth {
     @Column(name = "secret_key", nullable = false)
     private String secretKey;
 
-    @Lob
+
     @Column(name = "backup_codes")
     private String backupCodes;
 

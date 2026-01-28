@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 @Getter
 @Setter
 @Entity
-@Table(name = "purchase_order_items", schema = "defaultdb", indexes = {
+@Table(name = "purchase_order_items", indexes = {
         @Index(name = "po_id", columnList = "po_id"),
         @Index(name = "product_id", columnList = "product_id")
 })

@@ -12,7 +12,7 @@ import java.util.Set;
 @Getter
 @Setter
 @Entity
-@Table(name = "suppliers", schema = "defaultdb")
+@Table(name = "suppliers")
 public class Supplier {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,7 +32,7 @@ public class Supplier {
     @Column(name = "phone", length = 20)
     private String phone;
 
-    @Lob
+
     @Column(name = "address")
     private String address;
 

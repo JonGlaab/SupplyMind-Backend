@@ -13,7 +13,7 @@ import java.util.Set;
 @Getter
 @Setter
 @Entity
-@Table(name = "products", schema = "defaultdb", uniqueConstraints = {
+@Table(name = "products", uniqueConstraints = {
         @UniqueConstraint(name = "sku", columnNames = {"sku"})
 })
 public class Product {

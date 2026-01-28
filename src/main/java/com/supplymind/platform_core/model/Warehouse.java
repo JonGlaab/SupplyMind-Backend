@@ -11,7 +11,7 @@ import java.util.Set;
 @Getter
 @Setter
 @Entity
-@Table(name = "warehouses", schema = "defaultdb")
+@Table(name = "warehouses")
 public class Warehouse {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -22,7 +22,7 @@ public class Warehouse {
     @Column(name = "location_name")
     private String locationName;
 
-    @Lob
+
     @Column(name = "address")
     private String address;
 

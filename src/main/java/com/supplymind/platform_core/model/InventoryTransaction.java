@@ -10,7 +10,7 @@ import java.time.Instant;
 @Getter
 @Setter
 @Entity
-@Table(name = "inventory_transactions", schema = "defaultdb", indexes = {
+@Table(name = "inventory_transactions", indexes = {
         @Index(name = "product_id", columnList = "product_id"),
         @Index(name = "warehouse_id", columnList = "warehouse_id")
 })
@@ -28,9 +28,10 @@ public class InventoryTransaction {
     @JoinColumn(name = "warehouse_id")
     private Warehouse warehouse;
 
-    @Lob
-    @Column(name = "type")
-    private String type;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false)
+    private InventoryTransactionType type;
+
 
     @Column(name = "quantity")
     private Integer quantity;

@@ -7,7 +7,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(name = "sales_order_items", schema = "defaultdb", indexes = {
+@Table(name = "sales_order_items",indexes = {
         @Index(name = "so_id", columnList = "so_id"),
         @Index(name = "product_id", columnList = "product_id")
 })

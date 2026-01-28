@@ -11,7 +11,7 @@ import java.time.Instant;
 @Getter
 @Setter
 @Entity
-@Table(name = "payments", schema = "defaultdb", indexes = {
+@Table(name = "payments",indexes = {
         @Index(name = "po_id", columnList = "po_id")
 })
 public class Payment {
@@ -31,15 +31,15 @@ public class Payment {
     @Column(name = "amount", precision = 15, scale = 2)
     private BigDecimal amount;
 
-    @Lob
+
     @Column(name = "status")
     private String status;
 
     @Column(name = "paid_at")
     private Instant paidAt;
 
-    @Lob
-    @Column(name = "payment_type")
+
+    @Column(name = "payment_type", nullable = false, length = 20)
     private String paymentType;
 
 }
