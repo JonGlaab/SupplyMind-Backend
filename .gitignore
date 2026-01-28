@@ -90,7 +90,6 @@ src/main/resources/application-local.properties
 
 # Logs
 logs/
-*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
