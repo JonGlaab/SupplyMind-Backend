@@ -87,6 +87,7 @@ Desktop.ini
 # src/main/resources/application-dev.properties
 # Local Spring Boot secrets (DO NOT COMMIT)
 src/main/resources/application-local.properties
+src/main/resources/application.properties
 
 # Logs
 logs/
