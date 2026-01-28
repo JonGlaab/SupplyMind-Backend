@@ -82,14 +82,13 @@ Desktop.ini
 .env.test
 .env.production
 
-# Optional: Ignore application.properties if you put secrets directly in there
-# (Better to use application-dev.properties and ignore that)
-# src/main/resources/application-dev.properties
-# src/main/resources/application-secrets.properties
+application.properties
+application-dev.properties
+src/main/resources/application.properties
+src/main/resources/application-secrets.properties
 
 # Logs
 logs/
-*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
