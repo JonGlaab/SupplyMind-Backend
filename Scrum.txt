@@ -1,0 +1,62 @@
+2026-01-27
+Minh
+  What did I do yesterday? project start
+  What will I do today? Set up the SQL/database/project files
+  What impediments are blocking me? 
+
+Fatemeh
+  What did I do yesterday? project start
+  What will I do today? Set up the hosting 
+  What impediments are blocking me?
+
+Jonathan
+  What did I do yesterday? project start
+  What will I do today? set up git / trello cards
+  What impediments are blocking me? 
+
+Elizabeth
+  What did I do yesterday? project start
+  What will I do today? project proposal / set up Jira
+  What impediments are blocking me? 
+
+2026-01-28
+Minh
+  What did I do yesterday? Set up the DB
+  What will I do today? Set up the db models, User Authentication
+  What impediments are blocking me? waiting for hosting
+
+Fatemeh
+  What did I do yesterday? set up database hosting
+  What will I do today? set up backend and frontend hosting, set up package structure
+  What impediments are blocking me? learning curve
+
+Jonathan
+  What did I do yesterday? help with trello, set up git
+  What will I do today? help with hosting, test connections, start view for products
+  What impediments are blocking me? troubleshooting
+
+Elizabeth
+  What did I do yesterday? set up Jira, finish and send proposal
+  What will I do today? help with hosting, Admin page for user creation
+  What impediments are blocking me? troubleshooting
+
+2026-01-29
+Minh
+  What did I do yesterday? 
+  What will I do today? 
+  What impediments are blocking me?
+
+Fatemeh
+  What did I do yesterday? 
+  What will I do today? 
+  What impediments are blocking me?
+
+Jonathan
+  What did I do yesterday? 
+  What will I do today? 
+  What impediments are blocking me? 
+
+Elizabeth
+  What did I do yesterday? 
+  What will I do today? 
+  What impediments are blocking me? 
