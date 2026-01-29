@@ -1,6 +1,5 @@
-package com.supplymind.platform_core.model;
+package com.supplymind.platform_core.model.core;
 
-import com.supplymind.platform_core.model.core.PurchaseOrder;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
