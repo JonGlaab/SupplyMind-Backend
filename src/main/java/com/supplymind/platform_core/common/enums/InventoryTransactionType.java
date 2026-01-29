@@ -1,4 +1,4 @@
 package com.supplymind.platform_core.common.enums;
 
-public class InventoryTransactionType {
+public enum InventoryTransactionType {
 }

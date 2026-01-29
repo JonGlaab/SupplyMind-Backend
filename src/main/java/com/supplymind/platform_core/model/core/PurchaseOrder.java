@@ -1,5 +1,7 @@
 package com.supplymind.platform_core.model.core;
 
+import com.supplymind.platform_core.model.ReturnRequest;
+import com.supplymind.platform_core.model.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -54,6 +56,6 @@ public class PurchaseOrder {
     private Set<PurchaseOrderItem> purchaseOrderItems = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "po")
-    private Set<Return> returns = new LinkedHashSet<>();
+    private Set<ReturnRequest> returns = new LinkedHashSet<>();
 
 }

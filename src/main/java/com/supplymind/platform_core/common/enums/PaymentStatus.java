@@ -1,4 +1,4 @@
 package com.supplymind.platform_core.common.enums;
 
-public class PaymentStatus {
+public enum PaymentStatus {
 }

@@ -1,5 +1,6 @@
 package com.supplymind.platform_core.model.core;
 
+import com.supplymind.platform_core.common.enums.InventoryTransactionType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
