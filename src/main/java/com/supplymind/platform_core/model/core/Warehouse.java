@@ -1,6 +1,7 @@
 package com.supplymind.platform_core.model.core;
 
 import com.supplymind.platform_core.model.*;
+import com.supplymind.platform_core.model.intel.DemandForecasting;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;

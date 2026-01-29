@@ -1,6 +1,6 @@
 package com.supplymind.platform_core.model.auth;
 
-import com.supplymind.platform_core.model.User;
+import com.supplymind.platform_core.model.auth.User;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;

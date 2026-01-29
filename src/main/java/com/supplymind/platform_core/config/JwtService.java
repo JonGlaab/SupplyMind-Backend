@@ -1,6 +1,6 @@
 package com.supplymind.platform_core.config;
 
-import com.supplymind.platform_core.model.User;
+import com.supplymind.platform_core.model.auth.User;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;

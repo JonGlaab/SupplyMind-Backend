@@ -1,7 +1,7 @@
 package com.supplymind.platform_core.model.core;
 
 import com.supplymind.platform_core.model.ReturnRequest;
-import com.supplymind.platform_core.model.User;
+import com.supplymind.platform_core.model.auth.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

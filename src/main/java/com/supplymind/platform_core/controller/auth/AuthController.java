@@ -31,17 +31,12 @@ public class AuthController {
         if (userRepository.existsByEmail(request.getEmail())) {
             return ResponseEntity.badRequest().body("Error: Email is already in use!");
         }
-
         User user = new User();
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-
-
         user.setRole(Role.STAFF);
-
         user.setIs2faEnabled(false);
         userRepository.save(user);
-
         return ResponseEntity.ok("User registered successfully! Please ask a Manager to approve your account.");
     }
     @PostMapping("/login")

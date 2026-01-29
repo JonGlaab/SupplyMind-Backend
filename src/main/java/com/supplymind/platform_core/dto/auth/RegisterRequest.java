@@ -1,6 +1,6 @@
 package com.supplymind.platform_core.dto.auth;
 
-import com.supplymind.platform_core.model.auth.Role;
+import com.supplymind.platform_core.common.enums.Role;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -8,7 +8,7 @@ import lombok.Data;
 import java.io.Serializable;
 
 /**
- * DTO for {@link com.supplymind.platform_core.model.User}
+ * DTO for {@link com.supplymind.platform_core.model.auth.User}
  */
 
 @Data

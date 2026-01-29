@@ -1,5 +1,4 @@
 package com.supplymind.platform_core.controller.auth;
-
 import com.supplymind.platform_core.config.JwtService;
 import com.supplymind.platform_core.model.auth.User;
 import com.supplymind.platform_core.repository.UserRepository;
