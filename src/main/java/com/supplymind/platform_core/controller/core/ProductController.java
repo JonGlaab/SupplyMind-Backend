@@ -1,5 +1,6 @@
 package com.supplymind.platform_core.controller.core;
 
+import com.supplymind.platform_core.common.util.PaginationDefaults;
 import com.supplymind.platform_core.dto.core.product.*;
 import com.supplymind.platform_core.service.core.ProductService;
 import jakarta.validation.Valid;
@@ -23,7 +24,7 @@ public class ProductController {
     }
 
     @GetMapping
-    public Page<ProductResponse> list(@PageableDefault(size = 50) Pageable pageable) {
+    public Page<ProductResponse> list(@PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = "productId") Pageable pageable) {
         return service.list(pageable);
     }
 
