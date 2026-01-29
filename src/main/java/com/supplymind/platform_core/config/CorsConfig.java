@@ -2,9 +2,12 @@ package com.supplymind.platform_core.config;
 
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 public class CorsConfig {
 }
 =======
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +30,10 @@ public class CorsConfig implements WebMvcConfigurer {
                 .allowCredentials(true);
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+}
+>>>>>>> Stashed changes
+=======
 }
 >>>>>>> Stashed changes
 =======
