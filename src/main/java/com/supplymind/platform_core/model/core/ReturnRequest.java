@@ -10,7 +10,7 @@ import java.time.Instant;
 @Getter
 @Setter
 @Entity
-@Table(name = "returns", schema = "defaultdb", indexes = {
+@Table(name = "return_requests", schema = "defaultdb", indexes = {
         @Index(name = "po_id", columnList = "po_id")
 })
 public class ReturnRequest{
