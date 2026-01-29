@@ -4,15 +4,16 @@ import com.supplymind.platform_core.model.intel.DemandForecasting;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-@Getter
-@Setter
+@Getter @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Entity
 @Table(name = "products", uniqueConstraints = {
         @UniqueConstraint(name = "sku", columnNames = {"sku"})
@@ -21,7 +22,7 @@ public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "product_id", nullable = false)
-    private Long id;
+    private Long productId;
 
     @Size(max = 50)
     @NotNull
