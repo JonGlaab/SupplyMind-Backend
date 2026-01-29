@@ -1,6 +1,6 @@
 package com.supplymind.platform_core.dto;
 
-import com.supplymind.platform_core.model.Role;
+import com.supplymind.platform_core.model.auth.Role;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
