@@ -1,12 +1,8 @@
 package com.supplymind.platform_core.dto.core.supplierproduct;
 
-import jakarta.validation.constraints.NotNull;
-
 import java.math.BigDecimal;
 
-public record SupplierProductCreateRequest(
-        @NotNull Long supplierId,
-        @NotNull Long productId,
+public record SupplierProductUpdateRequest(
         Integer leadTimeDays,
         BigDecimal costPrice
 ) {}
