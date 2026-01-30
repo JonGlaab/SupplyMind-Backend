@@ -60,3 +60,24 @@ Elizabeth
   What did I do yesterday? help with hosting, Admin page for user creation
   What will I do today? Admin dashboard to be able to add users.
   What impediments are blocking me? N/A
+
+  2026-01-30
+  Minh
+    What did I do yesterday? qr code and mobile
+    What will I do today? fix registration flow
+    What impediments are blocking me? N/A
+
+  Fatemeh
+    What did I do yesterday? Products logic in backend
+    What will I do today? supplier's CRUD, storage hosting, debugging
+    What impediments are blocking me? N/A
+
+  Jonathan
+    What did I do yesterday? Configure live sites so they communicate.
+    What will I do today? implementing Minh's views, debugging client hosting, again
+    What impediments are blocking me? Live sites not pushing
+
+  Elizabeth
+    What did I do yesterday? admin dashboard, debugging
+    What will I do today? debug admin CRUD, continue with dashboards, logs
+    What impediments are blocking me? N/A
