@@ -1,6 +1,7 @@
 package com.supplymind.platform_core.dto.core.product;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 public record ProductResponse(
         Long productId,
@@ -8,6 +9,7 @@ public record ProductResponse(
         String name,
         String category,
         BigDecimal unitPrice,
-        Integer reorderPoint
+        Integer reorderPoint,
+        Instant createdAt,
+        Instant updatedAt
 ) {}
-

@@ -75,8 +75,11 @@ public class ProductServiceImpl implements ProductService {
                 p.getName(),
                 p.getCategory(),
                 p.getUnitPrice(),
-                p.getReorderPoint()
+                p.getReorderPoint(),
+                p.getCreatedAt(),
+                p.getUpdatedAt()
         );
     }
+
 }
 
