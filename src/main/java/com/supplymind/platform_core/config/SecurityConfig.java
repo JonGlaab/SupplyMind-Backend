@@ -17,6 +17,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
 
+
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -27,10 +28,11 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(csrf -> csrf.disable()) // Disable CSRF for external API calls
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/", "/ping").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/ws-auth/**").permitAll()
+                        .requestMatchers("/ws/**", "/ws-auth/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
@@ -42,13 +44,20 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Allow both local and production origins
-        configuration.setAllowedOrigins(Arrays.asList(
+
+        // Merged origins from both upstream and local stashes
+        configuration.setAllowedOriginPatterns(Arrays.asList(
                 "http://localhost:5173",
+                "https://localhost:5173",
+                "http://192.168.*.*",
+                "https://192.168.*.*",
+                "https://*.ngrok-free.app",
+                "https://*.ngrok-free.dev",
                 "https://supplymind-frontend-7c89888c6700.herokuapp.com"
         ));
+
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -60,4 +69,5 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
 }

@@ -12,16 +12,21 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        // The Desktop will listen on urls starting with "/topic"
         config.enableSimpleBroker("/topic");
         config.setApplicationDestinationPrefixes("/app");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // The React Frontend connects to this URL
-        registry.addEndpoint("/ws-auth")
-                .setAllowedOriginPatterns("*") // Allows React (localhost:5173) to connect
-                .withSockJS(); // Fallback for browsers that don't support native WS
+        registry.addEndpoint("/ws")
+                .setAllowedOriginPatterns(
+                        "http://localhost:5173",
+                        "https://localhost:5173",
+                        "http://192.168.*.*",
+                        "https://192.168.*.*",
+                        "https://*.ngrok-free.app",
+                        "https://*.ngrok-free.dev"
+                )
+                .withSockJS();
     }
 }
