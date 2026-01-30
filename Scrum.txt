@@ -42,21 +42,21 @@ Elizabeth
 
 2026-01-29
 Minh
-  What did I do yesterday? 
-  What will I do today? 
-  What impediments are blocking me?
+  What did I do yesterday? Set up the db models, User Authentication
+  What will I do today? Debug backend file structure.
+  What impediments are blocking me? N/A
 
 Fatemeh
-  What did I do yesterday? 
-  What will I do today? 
-  What impediments are blocking me?
+  What did I do yesterday? File structure.
+  What will I do today? Products logic in the backend.
+  What impediments are blocking me? N/A
 
 Jonathan
-  What did I do yesterday? 
-  What will I do today? 
-  What impediments are blocking me? 
+  What did I do yesterday? Configure live sites so they communicate.
+  What will I do today? Debug live site. Get sites to talk to each other. Will start inventory view.
+  What impediments are blocking me? Live sites weren't talking to each other.
 
 Elizabeth
-  What did I do yesterday? 
-  What will I do today? 
-  What impediments are blocking me? 
+  What did I do yesterday? help with hosting, Admin page for user creation
+  What will I do today? Admin dashboard to be able to add users.
+  What impediments are blocking me? N/A
