@@ -14,6 +14,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.io.IOException;
 import java.util.List;
@@ -21,7 +22,8 @@ import java.util.List;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    @Autowired private JwtService jwtService;
+    @Value("${jwt.secret.key}")
+    private String secretKey;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -32,9 +34,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
             try {
-                // We use the same signing key logic from your JwtService
+                // Use the key derived from your environment variables
                 Claims claims = Jwts.parserBuilder()
-                        .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode("YTM0NTY3ODkwYWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY3ODkwYWJjZGVmZ2hpamtsbW5vcHFyc3R1dnc=")))
+                        .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKey)))
                         .build()
                         .parseClaimsJws(token)
                         .getBody();
@@ -43,14 +45,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String role = (String) claims.get("role");
 
                 if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    // Spring Security expects roles to start with "ROLE_"
+                    // Correctly prefixing with ROLE_ for hasRole("ADMIN")
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             email, null, List.of(new SimpleGrantedAuthority("ROLE_" + role))
                     );
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             } catch (Exception e) {
-                // Token invalid or expired
+                System.out.println("JWT Validation Error: " + e.getMessage());
             }
         }
         filterChain.doFilter(request, response);
