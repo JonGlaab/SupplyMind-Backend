@@ -3,7 +3,7 @@ package com.supplymind.platform_core.controller.admin;
 import com.supplymind.platform_core.common.enums.Role;
 import com.supplymind.platform_core.dto.auth.RegisterRequest;
 import com.supplymind.platform_core.model.auth.User;
-import com.supplymind.platform_core.repository.UserRepository;
+import com.supplymind.platform_core.repository.auth.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;

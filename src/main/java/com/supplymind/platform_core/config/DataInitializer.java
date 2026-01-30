@@ -2,7 +2,7 @@ package com.supplymind.platform_core.config;
 
 import com.supplymind.platform_core.common.enums.Role;
 import com.supplymind.platform_core.model.auth.User;
-import com.supplymind.platform_core.repository.UserRepository;
+import com.supplymind.platform_core.repository.auth.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
