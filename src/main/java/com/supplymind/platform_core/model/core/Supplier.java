@@ -1,23 +1,34 @@
 package com.supplymind.platform_core.model.core;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.Where;
 
+import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Entity
 @Table(name = "suppliers")
+@SQLDelete(sql = "UPDATE suppliers SET is_deleted = true WHERE supplier_id = ?")
+@Where(clause = "is_deleted = false")
 public class Supplier {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "supplier_id", nullable = false)
-    private Long id;
+    private Long supplierId;
 
     @Size(max = 255)
     @NotNull
@@ -32,14 +43,30 @@ public class Supplier {
     @Column(name = "phone", length = 20)
     private String phone;
 
-
     @Column(name = "address")
     private String address;
 
+    // ---------- Soft delete ----------
+    @Column(name = "is_deleted", nullable = false)
+    private boolean deleted = false;
+
+    // ---------- Audit timestamps ----------
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private Instant createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private Instant updatedAt;
+
+    // ---------- Relationships ----------
+    @JsonIgnore
     @OneToMany(mappedBy = "supplier")
+    @Builder.Default
     private Set<PurchaseOrder> purchaseOrders = new LinkedHashSet<>();
 
+    @JsonIgnore
     @OneToMany(mappedBy = "supplier")
+    @Builder.Default
     private Set<SupplierProduct> supplierProducts = new LinkedHashSet<>();
-
 }
