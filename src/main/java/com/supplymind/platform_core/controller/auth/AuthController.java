@@ -1,69 +1,62 @@
 package com.supplymind.platform_core.controller.auth;
 
-import com.supplymind.platform_core.config.JwtService;
-import com.supplymind.platform_core.dto.auth.AuthResponse;
-import com.supplymind.platform_core.dto.auth.LoginRequest;
-import com.supplymind.platform_core.dto.auth.RegisterRequest;
-import com.supplymind.platform_core.common.enums.Role;
-import com.supplymind.platform_core.model.auth.User;
-import com.supplymind.platform_core.repository.auth.UserRepository;
+import com.supplymind.platform_core.service.auth.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Optional;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    @Autowired
-    private JwtService jwtService;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@RequestBody RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-
-            return ResponseEntity.badRequest().body(new AuthResponse(null, "Error: Email is already in use!"));
-        }
-
-        User user = new User();
-        user.setEmail(request.getEmail());
-        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        user.setRole(request.getRole() != null ? request.getRole() : Role.STAFF);
-        user.setIs2faEnabled(false);
-
-
-        userRepository.save(user);
-
-        String jwtToken = jwtService.generateToken(user);
-
-        return ResponseEntity.ok(new AuthResponse(jwtToken, "User registered successfully"));
-    }
+    @Autowired private AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
-        Optional<User> userOptional = userRepository.findByEmail(request.getEmail());
+    public ResponseEntity<?> login(@RequestBody Map<String, String> req) {
+        try {
+            Map<String, Object> response = authService.login(
+                    req.get("email"),
+                    req.get("password")
+            );
+            return ResponseEntity.ok(response);
 
-        if (userOptional.isEmpty()) {
-            return ResponseEntity.status(401).body(new AuthResponse(null, "Invalid email or password"));
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body("Invalid Credentials");
+        }
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        try {
+            authService.changePassword(
+                    userDetails.getUsername(),
+                    body.get("newPassword")
+            );
+            return ResponseEntity.ok("Password updated successfully");
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).body("Invalid Token");
         }
 
-        User user = userOptional.get();
+        try {
+            Map<String, Object> profile = authService.getUserProfile(userDetails.getUsername());
+            return ResponseEntity.ok(profile);
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            return ResponseEntity.status(401).body(new AuthResponse(null, "Invalid email or password"));
+        } catch (Exception e) {
+            return ResponseEntity.status(404).body(e.getMessage());
         }
-
-        String jwtToken = jwtService.generateToken(user);
-
-        return ResponseEntity.ok(new AuthResponse(jwtToken, "Login Successful"));
     }
 }
