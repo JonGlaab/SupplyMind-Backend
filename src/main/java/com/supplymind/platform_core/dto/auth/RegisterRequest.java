@@ -19,5 +19,7 @@ public class RegisterRequest implements Serializable {
     @NotNull
     @Size(max = 255)
     String password;
+    private String firstName;
+    private String lastName;
     Role role;
 }

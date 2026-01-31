@@ -25,6 +25,16 @@ public class User {
     @Column(name = "user_id", nullable = false)
     private Long id;
 
+    @Size(max = 100)
+    @NotNull
+    @Column(name = "first_name", nullable = false)
+    private String firstName;
+
+    @Size(max = 100)
+    @NotNull
+    @Column(name = "last_name", nullable = false)
+    private String lastName;
+
     @Size(max = 255)
     @NotNull
     @Column(name = "email", nullable = false)

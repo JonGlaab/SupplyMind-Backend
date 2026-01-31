@@ -20,10 +20,14 @@ public class DataInitializer {
         return args -> {
             if (!userRepository.existsByEmail("admin@supplymind.com")) {
                 User admin = new User();
+                admin.setFirstName("Sys");
+                admin.setLastName("Admin");
+
                 admin.setEmail("admin@supplymind.com");
-                admin.setPasswordHash(passwordEncoder.encode("admin123")); // Set a secure temp password
+                admin.setPasswordHash(passwordEncoder.encode("admin123"));
                 admin.setRole(Role.ADMIN);
                 admin.setIs2faEnabled(false);
+
                 userRepository.save(admin);
                 System.out.println(">>> Default Admin Created: admin@supplymind.com / admin123");
             }

@@ -1,11 +1,13 @@
 package com.supplymind.platform_core.controller.admin;
 
 import com.supplymind.platform_core.common.enums.Role;
+import com.supplymind.platform_core.dto.admin.RoleUpdateRequest;
 import com.supplymind.platform_core.dto.auth.RegisterRequest;
 import com.supplymind.platform_core.model.auth.User;
 import com.supplymind.platform_core.repository.auth.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,5 +40,25 @@ public class AdminUserController {
 
         userRepository.save(user);
         return ResponseEntity.ok("User created successfully by Admin.");
+    }
+
+    @PatchMapping("/{userId}/role")
+    public ResponseEntity<?> updateRole(
+            @PathVariable Long userId,
+            @RequestBody RoleUpdateRequest request,
+            @AuthenticationPrincipal String currentUserEmail) { // Get current admin's email
+
+        return userRepository.findById(userId)
+                .map(user -> {
+                    // Safety Check: Prevent admin from demoting themselves
+                    if (user.getEmail().equals(currentUserEmail) && request.getRole() != Role.ADMIN) {
+                        return ResponseEntity.badRequest().body("Error: You cannot demote yourself from the Admin role.");
+                    }
+
+                    user.setRole(request.getRole());
+                    userRepository.save(user);
+                    return ResponseEntity.ok("User role updated to " + request.getRole());
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 }
