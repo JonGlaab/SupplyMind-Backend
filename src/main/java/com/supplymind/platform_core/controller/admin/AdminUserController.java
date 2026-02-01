@@ -2,6 +2,7 @@ package com.supplymind.platform_core.controller.admin;
 
 import com.supplymind.platform_core.common.enums.Role;
 import com.supplymind.platform_core.dto.admin.RoleUpdateRequest;
+import com.supplymind.platform_core.dto.admin.UserResponse;
 import com.supplymind.platform_core.dto.auth.RegisterRequest;
 import com.supplymind.platform_core.model.auth.User;
 import com.supplymind.platform_core.repository.auth.UserRepository;
@@ -21,9 +22,18 @@ public class AdminUserController {
     @Autowired private PasswordEncoder passwordEncoder;
 
     @GetMapping
-    public ResponseEntity<List<User>> getAllUsers() {
-        // In production, map this to a UserResponse DTO to hide password_hash
-        return ResponseEntity.ok(userRepository.findAll());
+    public ResponseEntity<List<UserResponse>> getAllUsers() {
+        List<UserResponse> users = userRepository.findAll().stream()
+                .map(user -> new UserResponse(
+                        user.getId(),
+                        user.getFirstName(),
+                        user.getLastName(),
+                        user.getEmail(),
+                        user.getRole(),
+                        user.getIs2faEnabled()
+                ))
+                .toList();
+        return ResponseEntity.ok(users);
     }
 
     @PostMapping
@@ -33,6 +43,8 @@ public class AdminUserController {
         }
 
         User user = new User();
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setRole(request.getRole() != null ? request.getRole() : Role.STAFF);
