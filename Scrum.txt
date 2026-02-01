@@ -81,3 +81,88 @@ Elizabeth
     What did I do yesterday? admin dashboard, debugging
     What will I do today? debug admin CRUD, continue with dashboards, logs
     What impediments are blocking me? N/A
+
+2026-02-01
+  Minh
+    What did I do yesterday? fix registration flow
+    What will I do today? Research forecasting.
+    What impediments are blocking me? 
+
+  Fatemeh
+    What did I do yesterday? supplier's CRUD, storage hosting, debugging
+    What will I do today? Testing of backend implementations until now. Warehouse implementation.
+    What impediments are blocking me?
+
+  Jonathan
+    What did I do yesterday? implementing Minh's views, debugging client hosting, again
+    What will I do today? implementing Minh's views, debugging client hosting, again
+    What impediments are blocking me? Issues with hosted version of site.
+
+  Elizabeth
+    What did I do yesterday? debug admin CRUD, continue with dashboards, logs
+    What will I do today? debug admin CRUD, continue with dashboards, logs
+    What impediments are blocking me? Figuring out why list of users wasn't loading in admin
+    dashboard.
+
+2026-02-02
+  Minh
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Fatemeh
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Jonathan
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Elizabeth
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+2026-02-03
+  Minh
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Fatemeh
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Jonathan
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Elizabeth
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+2026-02-04
+  Minh
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Fatemeh
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Jonathan
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Elizabeth
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
