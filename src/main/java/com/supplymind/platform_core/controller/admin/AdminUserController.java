@@ -73,4 +73,22 @@ public class AdminUserController {
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    @DeleteMapping("/{userId}")
+    public ResponseEntity<?> deleteUser(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal String currentUserEmail) { // Get email of the person making the request
+
+        return userRepository.findById(userId)
+                .map(user -> {
+                    // Safety Guard: Cannot delete yourself
+                    if (user.getEmail().equals(currentUserEmail)) {
+                        return ResponseEntity.badRequest().body("Error: You cannot delete your own account.");
+                    }
+
+                    userRepository.delete(user);
+                    return ResponseEntity.ok("User deleted successfully.");
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
 }
