@@ -21,6 +21,27 @@ public class AuthService {
 
     public Map<String, Object> login(String email, String rawPassword) {
 
+        //
+        try {
+            System.out.println("--- DIAGNOSTIC START ---");
+            // We use a raw query to see if the row exists at all
+            User user = userRepository.findByEmail(email).orElse(null);
+
+            if (user == null) {
+                System.out.println("RESULT: No user found with email: " + email);
+            } else {
+                System.out.println("RESULT: User found! ID: " + user.getId() + ", Role: " + user.getRole());
+            }
+        } catch (Exception e) {
+            System.out.println("!!! MAPPING ERROR DETECTED !!!");
+            System.out.println("Exception type: " + e.getClass().getName());
+            System.out.println("Error message: " + e.getMessage());
+            e.printStackTrace();
+        }
+        System.out.println("--- DIAGNOSTIC END ---");
+        //
+        System.out.println("Total Users in DB: " + userRepository.count());
+
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(email, rawPassword)
         );
