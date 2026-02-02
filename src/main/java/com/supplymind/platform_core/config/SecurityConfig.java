@@ -37,7 +37,7 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**", "/ws-auth/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/intel/**").hasRole("MANAGER") //For testing view only, TODO: remove after depends on role
+                        .requestMatchers("/api/**").hasRole("ADMIN") //For testing view only, TODO: remove after depends on role
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
