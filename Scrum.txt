@@ -106,23 +106,25 @@ Elizabeth
 
 2026-02-02
   Minh
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? Research forecasting. Research AI application for warehouse management.
+    What will I do today? Fix the web socket problem. Implement email reading.
     What impediments are blocking me?
 
   Fatemeh
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? Testing of backend implementations until now.
+    What will I do today? Warehouse implementation, purchase orders, inventory backend. Once login
+    is working will test products CRUD.
     What impediments are blocking me?
 
   Jonathan
-    What did I do yesterday?
-    What will I do today?
-    What impediments are blocking me?
+    What did I do yesterday? implementing Minh's views, debugging client hosting, again
+    What will I do today? Update side bar and top bar with functionality and to redirect to
+    aproporiate pages.
+    What impediments are blocking me? Hosting doesn't always redeploy front end site automatically.
 
   Elizabeth
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? debug admin CRUD, continue with dashboards, logs
+    What will I do today? Find out why Admin dashboard doesn't work live. Implement products.
     What impediments are blocking me?
 
 2026-02-03
