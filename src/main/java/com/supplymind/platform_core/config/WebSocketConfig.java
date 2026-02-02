@@ -25,7 +25,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                         "http://192.168.*.*",
                         "https://192.168.*.*",
                         "https://*.ngrok-free.app",
-                        "https://*.ngrok-free.dev"
+                        "https://*.ngrok-free.dev",
+                        "https://supplymind-frontend-7c89888c6700.herokuapp.com"
                 )
                 .withSockJS();
     }
