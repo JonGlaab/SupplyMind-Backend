@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import io.jsonwebtoken.Claims;
@@ -30,8 +31,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String path = request.getServletPath();
-        // Bypass filter for auth and websocket paths
-        if (path.startsWith("/auth/") || path.startsWith("/api/auth/") || path.startsWith("/ws")) {
+
+        if (path.equals("/api/auth/login") || path.startsWith("/ws")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -52,12 +53,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String role = (String) claims.get("role");
 
                 if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    // Correctly prefixing with ROLE_ for hasRole("ADMIN")
+                    UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
+                            .username(email)
+                            .password("") // Password isn't needed for the security context in a stateless JWT setup
+                            .authorities("ROLE_" + role)
+                            .build();
+
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            email, null, List.of(new SimpleGrantedAuthority("ROLE_" + role))
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities()
                     );
+
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
+
             } catch (Exception e) {
                 System.out.println("JWT Validation Error: " + e.getMessage());
             }

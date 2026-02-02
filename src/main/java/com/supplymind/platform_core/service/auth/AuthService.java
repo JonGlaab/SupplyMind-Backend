@@ -47,8 +47,10 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setNeedsPasswordChange(false);
         userRepository.save(user);
     }
+
     public Map<String, Object> getUserProfile(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
