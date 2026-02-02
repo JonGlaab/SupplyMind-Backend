@@ -18,19 +18,44 @@ public class DataInitializer {
     @Bean
     public CommandLineRunner initData() {
         return args -> {
-            if (!userRepository.existsByEmail("admin@supplymind.com")) {
-                User admin = new User();
-                admin.setFirstName("Sys");
-                admin.setLastName("Admin");
+            // 1. ADMIN (admin123)
+            createUserIfNotFound(
+                    "supplymind.demo.2025@gmail.com",
+                    "admin123",
+                    "System", "Admin",
+                    Role.ADMIN
+            );
 
-                admin.setEmail("admin@supplymind.com");
-                admin.setPasswordHash(passwordEncoder.encode("admin123"));
-                admin.setRole(Role.ADMIN);
-                admin.setIs2faEnabled(false);
+            // 2. MANAGER (manager123)
+            createUserIfNotFound(
+                    "supplymind.demo.2025+manager@gmail.com",
+                    "manager123",
+                    "Alice", "Manager",
+                    Role.MANAGER
+            );
 
-                userRepository.save(admin);
-                System.out.println(">>> Default Admin Created: admin@supplymind.com / admin123");
-            }
+            // 3. STAFF (staff123)
+            createUserIfNotFound(
+                    "supplymind.demo.2025+staff@gmail.com",
+                    "staff123",
+                    "Bob", "Staff",
+                    Role.STAFF
+            );
         };
+    }
+
+    private void createUserIfNotFound(String email, String rawPassword, String first, String last, Role role) {
+        if (!userRepository.existsByEmail(email)) {
+            User user = new User();
+            user.setFirstName(first);
+            user.setLastName(last);
+            user.setEmail(email);
+            user.setPasswordHash(passwordEncoder.encode(rawPassword));
+            user.setRole(role);
+            user.setIs2faEnabled(false);
+
+            userRepository.save(user);
+            System.out.println(">>> Seeded User: " + email + " / " + rawPassword);
+        }
     }
 }
