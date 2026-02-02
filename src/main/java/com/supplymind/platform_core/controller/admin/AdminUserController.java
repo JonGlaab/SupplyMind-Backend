@@ -91,4 +91,24 @@ public class AdminUserController {
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    @PostMapping("/{userId}/reset-password")
+    public ResponseEntity<?> resetPassword(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal String currentUserEmail) { // Capture active admin email
+
+        return userRepository.findById(userId)
+                .map(user -> {
+                    // Safety Guard: Cannot reset your own password here
+                    if (user.getEmail().equals(currentUserEmail)) {
+                        return ResponseEntity.badRequest().body("Security Restriction: Use 'Settings' to change your own password.");
+                    }
+
+                    user.setPasswordHash(passwordEncoder.encode("123456"));
+                    user.setNeedsPasswordChange(true);
+                    userRepository.save(user);
+                    return ResponseEntity.ok("Password reset successful.");
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
 }

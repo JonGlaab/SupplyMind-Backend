@@ -62,4 +62,8 @@ public class User {
     @OneToMany(mappedBy = "user")
     private Set<UserSession> userSessions = new LinkedHashSet<>();
 
+    @ColumnDefault("0")
+    @Column(name = "needs_password_change")
+    private Boolean needsPasswordChange = false;
+
 }
