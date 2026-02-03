@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,6 +28,7 @@ public class SupplierProductController {
 
     // View supplier product catalogue
     @GetMapping
+    @Transactional(readOnly = true)
     @PreAuthorize("hasAnyRole('PROCUREMENT_OFFICER','MANAGER','STAFF','ADMIN')")
     public List<SupplierProductResponse> listBySupplier(@RequestParam Long supplierId) {
         return service.listBySupplier(supplierId);
