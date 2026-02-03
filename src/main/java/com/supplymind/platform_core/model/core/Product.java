@@ -48,6 +48,10 @@ public class Product {
     @Column(name = "category", length = 100)
     private String category;
 
+    @Size(max = 1000)
+    @Column(name = "description", length = 1000)
+    private String description;
+
     @Column(name = "unit_price", precision = 15, scale = 2)
     private BigDecimal unitPrice;
 

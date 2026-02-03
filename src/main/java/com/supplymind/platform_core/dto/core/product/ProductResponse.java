@@ -10,6 +10,7 @@ public record ProductResponse(
         String category,
         BigDecimal unitPrice,
         Integer reorderPoint,
+        String description,
         Instant createdAt,
         Instant updatedAt
 ) {}

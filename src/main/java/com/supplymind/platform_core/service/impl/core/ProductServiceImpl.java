@@ -30,6 +30,7 @@ public class ProductServiceImpl implements ProductService {
                 .category(req.category() == null ? null : req.category().trim())
                 .unitPrice(req.unitPrice())
                 .reorderPoint(req.reorderPoint())
+                .description(req.description() != null ? req.description().trim() : null)
                 .build();
 
         return toResponse(repo.save(p));
@@ -56,6 +57,7 @@ public class ProductServiceImpl implements ProductService {
         if (req.category() != null) p.setCategory(req.category().trim());
         if (req.unitPrice() != null) p.setUnitPrice(req.unitPrice());
         if (req.reorderPoint() != null) p.setReorderPoint(req.reorderPoint());
+        if (req.description() != null) p.setDescription(req.description().trim());
 
         return toResponse(repo.save(p));
     }
@@ -76,6 +78,7 @@ public class ProductServiceImpl implements ProductService {
                 p.getCategory(),
                 p.getUnitPrice(),
                 p.getReorderPoint(),
+                p.getDescription(),
                 p.getCreatedAt(),
                 p.getUpdatedAt()
         );
