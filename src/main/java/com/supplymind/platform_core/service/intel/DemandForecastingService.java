@@ -1,6 +1,7 @@
 package com.supplymind.platform_core.service.intel;
 
 import com.supplymind.platform_core.common.enums.InventoryTransactionType;
+import com.supplymind.platform_core.common.math.HoltWinters;
 import com.supplymind.platform_core.dto.intel.forecast.ForecastResponse;
 import com.supplymind.platform_core.model.core.InventoryTransaction;
 import com.supplymind.platform_core.repository.core.InventoryTransactionRepository;
@@ -9,7 +10,11 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -17,60 +22,50 @@ public class DemandForecastingService {
 
     private final InventoryTransactionRepository transactionRepository;
 
-    private static final double TREND_THRESHOLD = 0.10;
+    // Default seasonality: 7 days
+    private static final int DEFAULT_SEASONALITY = 7;
 
     public ForecastResponse calculateForecast(Long productId) {
         Instant now = Instant.now();
         Instant ninetyDaysAgo = now.minus(90, ChronoUnit.DAYS);
-        Instant thirtyDaysAgo = now.minus(30, ChronoUnit.DAYS);
-        Instant sixtyDaysAgo = now.minus(60, ChronoUnit.DAYS);
+
         List<InventoryTransaction> history = transactionRepository.findSalesHistory(
                 productId,
-                InventoryTransactionType.OUT,
+                InventoryTransactionType.OUT, // Filter only SALES
                 ninetyDaysAgo
         );
 
-        double recentSales = history.stream()
-                .filter(t -> t.getTimestamp().isAfter(thirtyDaysAgo))
-                .mapToInt(InventoryTransaction::getQuantity)
-                .sum();
+        // 2. Pre-process Data: Create a continuous list of 90 days (fill gaps with 0.0)
+        List<Double> dailySales = new ArrayList<>(Collections.nCopies(90, 0.0));
 
-        double previousSales = history.stream()
-                .filter(t -> t.getTimestamp().isBefore(thirtyDaysAgo) && t.getTimestamp().isAfter(sixtyDaysAgo))
-                .mapToInt(InventoryTransaction::getQuantity)
-                .sum();
+        // Group transactions by "Day Index" (0 = 90 days ago, 89 = Today)
+        Map<Integer, Double> salesMap = history.stream()
+                .collect(Collectors.groupingBy(
+                        t -> (int) ChronoUnit.DAYS.between(ninetyDaysAgo, t.getTimestamp()),
+                        Collectors.summingDouble(InventoryTransaction::getQuantity)
+                ));
 
-        int totalSales90Days = history.stream().mapToInt(InventoryTransaction::getQuantity).sum();
-        double dailyVelocity = (totalSales90Days > 0) ? (totalSales90Days / 90.0) : 0.0;
+        for (int i = 0; i < 90; i++) {
+            if (salesMap.containsKey(i)) {
+                dailySales.set(i, salesMap.get(i));
+            }
+        }
 
-        double predictedVelocity = (recentSales > previousSales) ? (recentSales / 30.0) : dailyVelocity;
-        int predictedDemand = (int) Math.ceil(predictedVelocity * 30 * 1.05);
+        double predictedDemand = HoltWinters.predictNext30Days(dailySales, DEFAULT_SEASONALITY);
 
-        String trend = calculateTrendLabel(recentSales, previousSales);
+        String trend = HoltWinters.detectTrend(dailySales);
+
+
+        double totalSales = history.stream().mapToDouble(InventoryTransaction::getQuantity).sum();
+        double avgDaily = totalSales / 90.0;
 
         return ForecastResponse.builder()
                 .productId(productId)
                 .analysisPeriodDays(90)
-                .totalSalesInPeriod(totalSales90Days)
-                .averageDailySales(dailyVelocity)
-                .predictedDemandNext30Days(predictedDemand)
+                .totalSalesInPeriod((int) totalSales)
+                .averageDailySales(avgDaily)
+                .predictedDemandNext30Days((int) Math.ceil(predictedDemand)) // Always round up forecast
                 .trend(trend)
                 .build();
-    }
-
-    private String calculateTrendLabel(double recent, double previous) {
-        if (previous == 0) {
-            return (recent > 0) ? "RISING (NEW)" : "STABLE";
-        }
-
-        double growthRate = (recent - previous) / previous;
-
-        if (growthRate >= TREND_THRESHOLD) {
-            return "RISING";    // +10% or more
-        } else if (growthRate <= -TREND_THRESHOLD) {
-            return "DECLINING"; // -10% or more
-        } else {
-            return "STABLE";    // Between -10% and +10%
-        }
     }
 }
