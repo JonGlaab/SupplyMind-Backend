@@ -2,6 +2,10 @@ package com.supplymind.platform_core.model.core;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -35,4 +39,12 @@ public class Inventory {
     @Column(name = "qty_on_hand", nullable = false)
     @Builder.Default
     private Integer qtyOnHand = 0;
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private Instant createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private Instant updatedAt;
 }

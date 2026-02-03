@@ -1,4 +1,14 @@
 package com.supplymind.platform_core.service.core;
 
-public class InventoryService {
+import com.supplymind.platform_core.dto.core.inventory.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+public interface InventoryService {
+
+    Page<InventoryResponse> listByWarehouse(Long warehouseId, Pageable pageable);
+
+    void recordTransaction(InventoryTransactionRequest req);
+
+    Page<InventoryTransactionResponse> listTransactions(Long warehouseId, Long productId, Pageable pageable);
 }
