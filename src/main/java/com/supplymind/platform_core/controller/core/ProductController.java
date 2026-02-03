@@ -24,7 +24,8 @@ public class ProductController {
     // Create product: Procurement + Manager
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('PROCUREMENT_OFFICER','MANAGER')")
+    //TODO: ADMIN preauthorized to delete for dev testing. Remove ADMIN for production.
+    @PreAuthorize("hasAnyRole('PROCUREMENT_OFFICER','MANAGER', 'ADMIN')")
     public ProductResponse create(@Valid @RequestBody ProductCreateRequest req) {
         return service.create(req);
     }
@@ -47,7 +48,8 @@ public class ProductController {
 
     // Update product: Procurement + Manager
     @PatchMapping("/{productId}")
-    @PreAuthorize("hasAnyRole('PROCUREMENT_OFFICER','MANAGER')")
+    //TODO: ADMIN preauthorized to delete for dev testing. Remove ADMIN for production.
+    @PreAuthorize("hasAnyRole('PROCUREMENT_OFFICER','MANAGER', 'ADMIN')")
     public ProductResponse update(
             @PathVariable Long productId,
             @Valid @RequestBody ProductUpdateRequest req
@@ -58,7 +60,8 @@ public class ProductController {
     // Delete product: Procurement only (more sensitive)
     @DeleteMapping("/{productId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasRole('PROCUREMENT_OFFICER')")
+    //TODO: ADMIN preauthorized to delete for dev testing. Remove ADMIN for production.
+    @PreAuthorize("hasAnyRole('PROCUREMENT_OFFICER', 'ADMIN')")
     public void delete(@PathVariable Long productId) {
         service.delete(productId);
     }
