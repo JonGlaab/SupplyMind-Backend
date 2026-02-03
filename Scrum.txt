@@ -129,24 +129,24 @@ Elizabeth
 
 2026-02-03
   Minh
-    What did I do yesterday?
-    What will I do today?
-    What impediments are blocking me?
+    What did I do yesterday? fixed websocket problem, research
+    What will I do today? implementing email reading
+    What impediments are blocking me? research
 
   Fatemeh
-    What did I do yesterday?
-    What will I do today?
-    What impediments are blocking me?
+    What did I do yesterday? implemented warehouse and inventory backend
+    What will I do today? implement purchase orders and return request backend
+    What impediments are blocking me? login issues
 
   Jonathan
-    What did I do yesterday?
-    What will I do today?
-    What impediments are blocking me?
+    What did I do yesterday? fixed login for me, sidebar role behavior
+    What will I do today? jira testing, adding views, connecting routes, polish
+    What impediments are blocking me? login issues all over, websockets
 
   Elizabeth
-    What did I do yesterday?
-    What will I do today?
-    What impediments are blocking me?
+    What did I do yesterday? debug admin crud, admin dashboard
+    What will I do today? forecast view, staff dashboard, sprucing
+    What impediments are blocking me? websockets
 
 2026-02-04
   Minh
