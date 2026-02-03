@@ -31,6 +31,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final ProductRepository productRepo;
 
     @Override
+    @Transactional(readOnly = true)
     public Page<InventoryResponse> listByWarehouse(Long warehouseId, Pageable pageable) {
         // Validate warehouse exists
         warehouseRepo.findById(warehouseId)
@@ -41,6 +42,7 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<InventoryTransactionResponse> listTransactions(Long warehouseId, Long productId, Pageable pageable) {
 
         if (warehouseId != null && productId != null) {
@@ -73,7 +75,6 @@ public class InventoryServiceImpl implements InventoryService {
                 tx.getTimestamp()
         );
     }
-
 
     @Override
     @Transactional
@@ -123,8 +124,6 @@ public class InventoryServiceImpl implements InventoryService {
         txRepo.save(tx);
     }
 
-
-
     private InventoryResponse toResponse(Inventory inv) {
         return new InventoryResponse(
                 inv.getInventoryId(),
@@ -138,4 +137,3 @@ public class InventoryServiceImpl implements InventoryService {
         );
     }
 }
-
