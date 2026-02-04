@@ -150,21 +150,24 @@ Elizabeth
 
 2026-02-04
   Minh
-    What did I do yesterday?
-    What will I do today?
-    What impediments are blocking me?
+    What did I do yesterday? Implementing email reading
+    What will I do today? Still working on email and ability to send email also.
+    What impediments are blocking me? Had to discuss with team how we want to use email.
 
   Fatemeh
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? implement purchase orders
+    What will I do today? return request backend. Will put presigned URL in storage config. Will
+    test purchase order backend.
     What impediments are blocking me?
 
   Jonathan
-    What did I do yesterday?
-    What will I do today?
-    What impediments are blocking me?
+    What did I do yesterday? jira testing, adding views, connecting routes, polish.
+    What will I do today? Figuring out why live site doesn't work (AGAIN!). Adding views.
+    What impediments are blocking me? CORS issue which keeps returning when new features are
+    implemented.
 
   Elizabeth
-    What did I do yesterday?
-    What will I do today?
-    What impediments are blocking me?
+    What did I do yesterday? forecast view and Manager sidebar
+    What will I do today? Will look into how to close a sprint in Jira. Staff dashboard, sprucing
+    continued.
+    What impediments are blocking me? Merge conflics after two of us were working on sidebar layout.
