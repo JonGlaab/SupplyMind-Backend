@@ -61,28 +61,40 @@ public class GmailAdapter implements EmailProvider {
         File tokenFolder = new File(TOKENS_DIRECTORY_PATH);
         if (!tokenFolder.exists()) tokenFolder.mkdirs();
 
-        // 3. BRIDGE: If on Heroku, write the token from the Env Var to the disk
-        String tokenData = System.getenv("GMAIL_TOKEN_VALUE");
-        if (tokenData != null) {
+        // 3. BRIDGE: Fixed for Base64 (Heroku compatibility)
+        String tokenDataEncoded = System.getenv("GMAIL_TOKEN_VALUE");
+        if (tokenDataEncoded != null && !tokenDataEncoded.isEmpty()) {
+            // Remove any accidental whitespace or newlines from the copy-paste
+            String cleanBase64 = tokenDataEncoded.replaceAll("\\s", "");
+
+            // Decode the Base64 string back into the original binary bytes
+            byte[] decodedBytes = java.util.Base64.getDecoder().decode(cleanBase64);
+
+            // Write the raw binary bytes to the file
             java.nio.file.Files.write(
                     new File(tokenFolder, "StoredCredential").toPath(),
-                    tokenData.getBytes()
+                    decodedBytes
             );
         }
 
+        // 4. Build the Flow
         GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
                 HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
                 .setDataStoreFactory(new FileDataStoreFactory(tokenFolder))
                 .setAccessType("offline")
                 .build();
 
-        // 4. Load the credential (it will now find the file we just 'wrote' above)
+        // 5. Load the credential from the file we just created
         Credential credential = flow.loadCredential("user");
 
-        // Fallback for local dev if token doesn't exist yet
+        // 6. Fallback for local dev
         if (credential == null && System.getenv("DYNO") == null) {
             LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
             credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
+        }
+
+        if (credential == null) {
+            throw new RuntimeException("Gmail credential could not be loaded. Please check GMAIL_TOKEN_VALUE.");
         }
 
         return new Gmail.Builder(HTTP_TRANSPORT, JSON_FACTORY, credential)
