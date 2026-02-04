@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -21,6 +22,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
     @Autowired
     private JwtAuthenticationFilter jwtAuthFilter;
@@ -39,7 +41,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/procurement/**").permitAll() //For testing sending email API only, TODO: change after depends on role
 
-                        .requestMatchers("/api/core/**").hasAnyRole("ADMIN","MANAGER")
+                        .requestMatchers("/api/core/**").permitAll() //For testing only, TODO: change after depends on role
 
                         //this one should be on bottom of the list so other api can run first
                         .requestMatchers("/api/**").hasAnyRole("ADMIN", "MANAGER") //For testing

@@ -4,6 +4,23 @@ import com.supplymind.platform_core.common.enums.PurchaseOrderStatus;
 import com.supplymind.platform_core.common.util.PaginationDefaults;
 import com.supplymind.platform_core.dto.core.purchaseorder.*;
 import com.supplymind.platform_core.service.core.PurchaseOrderService;
+
+// Services & Models
+import com.supplymind.platform_core.model.auth.User;
+import com.supplymind.platform_core.model.core.PurchaseOrder;
+import com.supplymind.platform_core.repository.auth.UserRepository;
+import com.supplymind.platform_core.repository.core.PurchaseOrderRepository;
+import com.supplymind.platform_core.service.common.PdfGenerationService;
+import com.supplymind.platform_core.service.communication.EmailProvider;
+import com.supplymind.platform_core.service.intel.AiContentService;
+import org.springframework.transaction.annotation.Transactional;
+
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
@@ -12,12 +29,22 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.File;
+import java.security.Principal;
+
+
 @RestController
 @RequestMapping("/api/core/purchase-orders")
 @RequiredArgsConstructor
 public class PurchaseOrderController {
 
     private final PurchaseOrderService service;
+    private final PurchaseOrderRepository purchaseOrderRepository;
+    private final UserRepository userRepository;
+    private final EmailProvider emailProvider;
+    private final AiContentService aiContentService;
+    private final PdfGenerationService pdfGenerationService;
+
 
     // POST /api/core/purchase-orders - create draft
     @PostMapping
@@ -119,6 +146,97 @@ public class PurchaseOrderController {
     private Pageable capPageSize(Pageable pageable) {
         int size = Math.min(pageable.getPageSize(), PaginationDefaults.MAX_PAGE_SIZE);
         return PageRequest.of(pageable.getPageNumber(), size, pageable.getSort());
+    }
+    //Email
+    /**
+     * Frontend calls this to show the PDF Preview on the Right Side.
+     */
+    @GetMapping("/{poId}/preview-pdf")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Resource> previewPurchaseOrderPdf(@PathVariable Long poId) {
+        try {
+            PurchaseOrder po = purchaseOrderRepository.findById(poId)
+                    .orElseThrow(() -> new RuntimeException("Purchase Order not found: " + poId));
+
+            File pdfFile = pdfGenerationService.generatePurchaseOrderPdf(po);
+            FileSystemResource resource = new FileSystemResource(pdfFile);
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=" + pdfFile.getName())
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .contentLength(pdfFile.length())
+                    .body(resource);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Frontend calls this to populate the "Left Side" Email Editor (AI Draft).
+     */
+    @GetMapping("/{poId}/email-draft")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
+    @Transactional(readOnly = true)
+    public ResponseEntity<EmailDraftResponse> getEmailDraft(@PathVariable Long poId, Principal principal) {
+        try {
+            PurchaseOrder po = purchaseOrderRepository.findById(poId)
+                    .orElseThrow(() -> new RuntimeException("Purchase Order not found: " + poId));
+
+            // Identify Manager for the AI Signature
+            String managerName = "SupplyMind Manager";
+            if (principal != null) {
+                User user = userRepository.findByEmail(principal.getName()).orElse(null);
+                if (user != null) managerName = user.getFirstName() + " " + user.getLastName();
+            }
+
+            if (po.getSupplier() == null) return ResponseEntity.badRequest().build();
+
+            // Ask AI for the draft
+            String body = aiContentService.generatePurchaseOrderEmail(po, managerName, po.getSupplier().getName());
+            String subject = "Official Purchase Order PO-" + po.getPoId();
+
+            return ResponseEntity.ok(new EmailDraftResponse(subject, body, po.getSupplier().getContactEmail()));
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Manager clicks "Confirm & Send".
+     * Accepts the FINAL body (edited by manager) and sends it.
+     */
+    @PostMapping("/{poId}/send")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
+    public ResponseEntity<String> sendPurchaseOrder(
+            @PathVariable Long poId,
+            @RequestBody SendPurchaseOrderEmailRequest request) { // 👈 Accepts edited content
+        try {
+            PurchaseOrder po = purchaseOrderRepository.findById(poId)
+                    .orElseThrow(() -> new RuntimeException("Purchase Order not found"));
+
+            if (po.getSupplier() == null || po.getSupplier().getContactEmail() == null) {
+                return ResponseEntity.badRequest().body(" Supplier email is missing.");
+            }
+
+            // 1. Generate Official PDF (Fresh from DB)
+            File pdfAttachment = pdfGenerationService.generatePurchaseOrderPdf(po);
+
+            emailProvider.sendEmail(
+                    po.getSupplier().getContactEmail(),
+                    request.getSubject(),
+                    request.getBody(),
+                    pdfAttachment
+            );
+
+            return ResponseEntity.ok("Sent PO-" + po.getPoId());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Failed: " + e.getMessage());
+        }
     }
 }
 
