@@ -18,17 +18,13 @@ import org.apache.commons.codec.binary.Base64;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
-
 import jakarta.mail.Session;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
@@ -52,44 +48,39 @@ public class GmailAdapter implements EmailProvider {
         }
     }
 
-    import java.io.StringReader; // Add this import at the top
-
     private Gmail authenticate() throws Exception {
         final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
 
-        // 1. Try to get credentials from Environment Variable first (Production)
-        // Fallback to the resource file (Development)
+        // 1. Load Credentials from Env Var
         String jsonConfig = System.getenv("GOOGLE_CREDENTIALS_JSON");
-        GoogleClientSecrets clientSecrets;
+        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(
+                JSON_FACTORY, new StringReader(jsonConfig)
+        );
 
-        if (jsonConfig != null && !jsonConfig.isEmpty()) {
-            clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new StringReader(jsonConfig));
-        } else {
-            InputStream in = GmailAdapter.class.getResourceAsStream("/credentials.json");
-            if (in == null) throw new RuntimeException("Google credentials not found in GOOGLE_CREDENTIALS_JSON or resources.");
-            clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
+        // 2. Setup the tokens directory
+        File tokenFolder = new File(TOKENS_DIRECTORY_PATH);
+        if (!tokenFolder.exists()) tokenFolder.mkdirs();
+
+        // 3. BRIDGE: If on Heroku, write the token from the Env Var to the disk
+        String tokenData = System.getenv("GMAIL_TOKEN_VALUE");
+        if (tokenData != null) {
+            java.nio.file.Files.write(
+                    new File(tokenFolder, "StoredCredential").toPath(),
+                    tokenData.getBytes()
+            );
         }
 
-        // 2. Build the Flow
         GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
                 HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
-                .setDataStoreFactory(new FileDataStoreFactory(new File(TOKENS_DIRECTORY_PATH)))
+                .setDataStoreFactory(new FileDataStoreFactory(tokenFolder))
                 .setAccessType("offline")
                 .build();
 
-        // 3. Authorization Logic
-        // LocalServerReceiver is for desktop apps; for Heroku, we use a headless check
-        Credential credential;
-        if (System.getenv("DYNO") != null) {
-            // We are on Heroku (Headless mode)
-            // This will attempt to load an existing token from the "tokens" directory
-            // If no token exists, you'll need a separate OAuth callback controller
-            credential = flow.loadCredential("user");
-            if (credential == null || (credential.getExpiresInSeconds() != null && credential.getExpiresInSeconds() <= 0)) {
-                System.err.println("CRITICAL: No valid Gmail token found on Heroku. Authentication required.");
-            }
-        } else {
-            // We are local (Desktop mode)
+        // 4. Load the credential (it will now find the file we just 'wrote' above)
+        Credential credential = flow.loadCredential("user");
+
+        // Fallback for local dev if token doesn't exist yet
+        if (credential == null && System.getenv("DYNO") == null) {
             LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
             credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
         }
