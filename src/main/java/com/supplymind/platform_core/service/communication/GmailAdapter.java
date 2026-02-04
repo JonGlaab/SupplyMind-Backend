@@ -33,7 +33,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
-@Service
+// @Service - Commented out as it was preventing the backend from starting.
 @Primary
 public class GmailAdapter implements EmailProvider {
 
