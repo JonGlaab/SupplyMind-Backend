@@ -37,6 +37,9 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**", "/ws-auth/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/procurement/**").permitAll() //For testing sending email API only, TODO: change after depends on role
+
+                        //this one should be on bottom of the list so other api can run first
                         .requestMatchers("/api/**").hasRole("ADMIN") //For testing view only, TODO: remove after depends on role
                         .anyRequest().authenticated()
                 )
