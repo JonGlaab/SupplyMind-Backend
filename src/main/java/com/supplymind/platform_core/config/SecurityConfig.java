@@ -31,10 +31,9 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/ping", "/error").permitAll()
+                        .requestMatchers("/", "/error").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/intel/demand/**").permitAll() //For testing demand API only, TODO: change after depends on role
-                        .requestMatchers("/api/intel/reorder-recommend/**").permitAll() //For testing reorder recommend API only, TODO: change after depends on role
+                        .requestMatchers("/api/intel/**").permitAll() //For testing demand API only, TODO: change after depends on role
                         .requestMatchers("/ws/**", "/ws-auth/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
