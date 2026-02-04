@@ -1,4 +1,7 @@
 package com.supplymind.platform_core.dto.core.purchaseorder;
 
-public class PurchaseOrderUpdateRequest {
-}
+public record PurchaseOrderUpdateRequest(
+        Long supplierId,
+        Long warehouseId
+) {}
+

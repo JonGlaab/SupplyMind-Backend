@@ -1,4 +1,14 @@
 package com.supplymind.platform_core.repository.core;
 
-public class PurchaseOrderItemRepository {
+import com.supplymind.platform_core.model.core.PurchaseOrderItem;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface PurchaseOrderItemRepository extends JpaRepository<PurchaseOrderItem, Long> {
+
+    List<PurchaseOrderItem> findAllByPo_PoId(Long poId);
 }
+
