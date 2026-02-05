@@ -4,6 +4,7 @@ import com.supplymind.platform_core.dto.core.product.*;
 import com.supplymind.platform_core.exception.ConflictException;
 import com.supplymind.platform_core.exception.NotFoundException;
 import com.supplymind.platform_core.model.core.Product;
+import com.supplymind.platform_core.repository.core.InventoryRepository;
 import com.supplymind.platform_core.repository.core.ProductRepository;
 import com.supplymind.platform_core.service.core.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository repo;
+    private final InventoryRepository inventoryRepository;
 
     @Override
     public ProductResponse create(ProductCreateRequest req) {
@@ -71,6 +73,10 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private ProductResponse toResponse(Product p) {
+        // For simplicity, we're fetching the total quantity across all warehouses.
+        // TODO: A more advanced implementation might require specifying a warehouse.
+        Integer qtyOnHand = inventoryRepository.findTotalQuantityByProductId(p.getProductId());
+
         return new ProductResponse(
                 p.getProductId(),
                 p.getSku(),
@@ -80,9 +86,9 @@ public class ProductServiceImpl implements ProductService {
                 p.getReorderPoint(),
                 p.getDescription(),
                 p.getCreatedAt(),
-                p.getUpdatedAt()
+                p.getUpdatedAt(),
+                qtyOnHand,
+                p.getReorderPoint() // Assuming reorderPoint is minStockLevel
         );
     }
-
 }
-

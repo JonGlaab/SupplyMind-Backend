@@ -12,5 +12,7 @@ public record ProductResponse(
         Integer reorderPoint,
         String description,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        Integer qtyOnHand,
+        Integer minStockLevel
 ) {}

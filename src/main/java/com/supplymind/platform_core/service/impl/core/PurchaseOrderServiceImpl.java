@@ -105,6 +105,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     }
 
 
+
+
     // ----------------------------
     // GET DETAILS
     // ----------------------------
@@ -238,7 +240,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         PurchaseOrder po = requirePo(poId);
 
         if (po.getStatus() != PurchaseOrderStatus.PENDING_APPROVAL) {
-            throw new BadRequestException("Only SUBMITTED POs can be approved.");
+            throw new BadRequestException("Only PENDING_APPROVAL POs can be approved.");
         }
 
         po.setStatus(PurchaseOrderStatus.APPROVED);
@@ -255,8 +257,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     public PurchaseOrderResponse cancel(Long poId) {
         PurchaseOrder po = requirePo(poId);
 
-        if (po.getStatus() == PurchaseOrderStatus.APPROVED) {
-            throw new BadRequestException("Cannot cancel a RECEIVED PO.");
+        if (po.getStatus() == PurchaseOrderStatus.COMPLETED) {
+            throw new BadRequestException("Cannot cancel a COMPLETED PO.");
         }
 
         po.setStatus(PurchaseOrderStatus.CANCELLED);
@@ -264,6 +266,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         List<PurchaseOrderItem> items = itemRepo.findAllByPo_PoId(poId);
         return toResponse(po, items);
     }
+
 
     // ----------------------------
     // RECEIVE (APPROVED -> RECEIVED, or SUBMITTED -> RECEIVED if you want)
@@ -275,7 +278,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         PurchaseOrder po = requirePo(poId);
 
         if (!(po.getStatus() == PurchaseOrderStatus.APPROVED || po.getStatus() == PurchaseOrderStatus.PENDING_APPROVAL)) {
-            throw new BadRequestException("PO must be APPROVED (or SUBMITTED) to receive.");
+            throw new BadRequestException("PO must be APPROVED (or PENDING_APPROVAL) to receive.");
         }
 
         Map<Long, Integer> receiveMap = req.lines().stream()
@@ -348,6 +351,52 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         recalcTotal(po, items);
         return toResponse(po, items);
     }
+
+
+    @Override
+    @Transactional
+    public PurchaseOrderResponse updateStatus(Long poId, PurchaseOrderStatusUpdateRequest req) {
+        PurchaseOrder po = requirePo(poId);
+
+        PurchaseOrderStatus current = po.getStatus();
+        PurchaseOrderStatus next = req.status();
+
+        // Can't change once terminal
+        if (current == PurchaseOrderStatus.COMPLETED || current == PurchaseOrderStatus.CANCELLED) {
+            throw new BadRequestException("Cannot change status for a " + current + " PO.");
+        }
+
+        // ✅ Allow DELAY_EXPECTED as a flag after CONFIRMED/SHIPPED (real life)
+        if (next == PurchaseOrderStatus.DELAY_EXPECTED) {
+            if (!(current == PurchaseOrderStatus.CONFIRMED || current == PurchaseOrderStatus.SHIPPED)) {
+                throw new BadRequestException("DELAY_EXPECTED can only be set after CONFIRMED or SHIPPED.");
+            }
+            po.setStatus(PurchaseOrderStatus.DELAY_EXPECTED);
+            return toResponse(po, itemRepo.findAllByPo_PoId(poId));
+        }
+
+        // ✅ Normal progression rules
+        boolean ok = switch (current) {
+            case DRAFT -> next == PurchaseOrderStatus.PENDING_APPROVAL; // use /submit normally
+            case PENDING_APPROVAL -> next == PurchaseOrderStatus.APPROVED; // use /approve normally
+            case APPROVED -> next == PurchaseOrderStatus.EMAIL_SENT;
+            case EMAIL_SENT -> next == PurchaseOrderStatus.SUPPLIER_REPLIED;
+            case SUPPLIER_REPLIED -> next == PurchaseOrderStatus.CONFIRMED;
+            case CONFIRMED -> next == PurchaseOrderStatus.SHIPPED;
+            case SHIPPED -> next == PurchaseOrderStatus.DELIVERED;
+            case DELIVERED -> next == PurchaseOrderStatus.COMPLETED; // usually done by /receive
+            case DELAY_EXPECTED -> next == PurchaseOrderStatus.SHIPPED || next == PurchaseOrderStatus.DELIVERED;
+            default -> false;
+        };
+
+        if (!ok) {
+            throw new BadRequestException("Invalid status transition: " + current + " -> " + next);
+        }
+
+        po.setStatus(next);
+        return toResponse(po, itemRepo.findAllByPo_PoId(poId));
+    }
+
 
     // ----------------------------
     // RECEIVING STATUS

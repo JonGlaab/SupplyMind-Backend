@@ -59,6 +59,7 @@ public class Product {
     private Integer reorderPoint;
 
     // --- Soft delete ---
+    @Builder.Default
     @Column(name = "is_deleted", nullable = false)
     private boolean deleted = false;
 

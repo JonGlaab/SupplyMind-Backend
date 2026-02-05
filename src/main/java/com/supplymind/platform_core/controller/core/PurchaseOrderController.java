@@ -130,6 +130,17 @@ public class PurchaseOrderController {
         return service.cancel(poId);
     }
 
+    // POST /api/core/purchase-orders/{poId}/status
+    @PostMapping("/{poId}/status")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
+    public PurchaseOrderResponse updateStatus(
+            @PathVariable Long poId,
+            @Valid @RequestBody PurchaseOrderStatusUpdateRequest req
+    ) {
+        return service.updateStatus(poId, req);
+    }
+
+
     // POST /api/core/purchase-orders/{poId}/receive
     @PostMapping("/{poId}/receive")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
