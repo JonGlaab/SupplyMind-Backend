@@ -13,6 +13,7 @@ import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.gmail.Gmail;
 import com.google.api.services.gmail.model.Message;
 import com.supplymind.platform_core.dto.intel.email.EmailMessage;
+import com.supplymind.platform_core.service.communication.EmailProvider;
 import org.apache.commons.codec.binary.Base64;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
@@ -37,71 +38,67 @@ public class GmailAdapter implements EmailProvider {
     private static final String TOKENS_DIRECTORY_PATH = "tokens";
     private static final List<String> SCOPES = Collections.singletonList("https://www.googleapis.com/auth/gmail.modify");
 
-    // FIX 1: Removed 'final'. We will load this only when needed.
     private Gmail gmailClient;
 
-    // FIX 2: Constructor is now empty.
-    // This allows Spring to start PurchaseOrderController and AIContentService
-    // even if Gmail isn't authenticated yet.
     public GmailAdapter() {
-    }
-
-    // FIX 3: Added a thread-safe getter to initialize the client only on first use.
-    private synchronized Gmail getGmailClient() throws Exception {
-        if (this.gmailClient == null) {
+        try {
             this.gmailClient = authenticate();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to initialize Gmail Adapter", e);
         }
-        return this.gmailClient;
     }
 
     private Gmail authenticate() throws Exception {
         final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
 
-        // 1. Load Credentials from Env Var or local resources
+        // Load Credentials JSON
         String jsonConfig = System.getenv("GOOGLE_CREDENTIALS_JSON");
-        GoogleClientSecrets clientSecrets;
+        if (jsonConfig == null) throw new RuntimeException("Missing GOOGLE_CREDENTIALS_JSON");
 
-        if (jsonConfig != null && !jsonConfig.isEmpty()) {
-            clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new StringReader(jsonConfig));
-        } else {
-            InputStream in = GmailAdapter.class.getResourceAsStream("/credentials.json");
-            if (in == null) throw new RuntimeException("credentials.json not found in resources");
-            clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
-        }
+        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(
+                JSON_FACTORY, new StringReader(jsonConfig)
+        );
 
-        // 2. Setup the tokens directory
+        // Setup the tokens directory
         File tokenFolder = new File(TOKENS_DIRECTORY_PATH);
         if (!tokenFolder.exists()) tokenFolder.mkdirs();
 
-        // 3. BRIDGE: Handle Base64 Token from Heroku
+        // --- HEROKU BINARY BRIDGE ---
         String tokenDataEncoded = System.getenv("GMAIL_TOKEN_VALUE");
         if (tokenDataEncoded != null && !tokenDataEncoded.isEmpty()) {
-            String cleanBase64 = tokenDataEncoded.replaceAll("\\s", "");
-            byte[] decodedBytes = java.util.Base64.getDecoder().decode(cleanBase64);
-            java.nio.file.Files.write(
-                    new File(tokenFolder, "StoredCredential").toPath(),
-                    decodedBytes
-            );
-        }
+            try {
+                // Remove any accidental whitespace/newlines from copy-pasting
+                String cleanBase64 = tokenDataEncoded.replaceAll("\\s", "");
+                byte[] decodedBytes = java.util.Base64.getDecoder().decode(cleanBase64);
 
-        // 4. Build the Flow
+                // Write the actual binary file to Heroku's ephemeral disk
+                java.nio.file.Files.write(
+                        new File(tokenFolder, "StoredCredential").toPath(),
+                        decodedBytes
+                );
+                System.out.println("✅ Successfully restored Gmail token from Environment Variable.");
+            } catch (Exception e) {
+                System.err.println("❌ Failed to decode GMAIL_TOKEN_VALUE: " + e.getMessage());
+            }
+        }
+        // ----------------------------
+
         GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
                 HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
                 .setDataStoreFactory(new FileDataStoreFactory(tokenFolder))
                 .setAccessType("offline")
                 .build();
 
-        // 5. Load the credential
         Credential credential = flow.loadCredential("user");
 
-        // 6. Fallback for local dev (only runs if NOT on Heroku)
+        // Only try to open a browser if we are NOT on Heroku
         if (credential == null && System.getenv("DYNO") == null) {
             LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
             credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
         }
 
         if (credential == null) {
-            throw new RuntimeException("Gmail credential could not be loaded. Please check GMAIL_TOKEN_VALUE.");
+            throw new RuntimeException("Gmail credential not found. App cannot send email.");
         }
 
         return new Gmail.Builder(HTTP_TRANSPORT, JSON_FACTORY, credential)
@@ -112,18 +109,19 @@ public class GmailAdapter implements EmailProvider {
     @Override
     public void sendEmail(String to, String subject, String body, File attachment) {
         try {
-            // FIX 4: Use the getter instead of the field directly
-            Gmail client = getGmailClient();
-
+            // 1. Create a Jakarta Mail Session
             Properties props = new Properties();
             Session session = Session.getDefaultInstance(props, null);
 
+            // 2. Build the Email
             MimeMessage email = new MimeMessage(session);
             email.setFrom(new InternetAddress("me"));
             email.addRecipient(jakarta.mail.Message.RecipientType.TO, new InternetAddress(to));
             email.setSubject(subject);
 
+            // 3. Handle Content
             MimeMultipart multipart = new MimeMultipart();
+
             MimeBodyPart textPart = new MimeBodyPart();
             textPart.setContent(body, "text/html; charset=utf-8");
             multipart.addBodyPart(textPart);
@@ -136,16 +134,17 @@ public class GmailAdapter implements EmailProvider {
 
             email.setContent(multipart);
 
+            // 4. Encode
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();
             email.writeTo(buffer);
             byte[] rawBytes = buffer.toByteArray();
             String encodedEmail = Base64.encodeBase64URLSafeString(rawBytes);
 
+            // 5. Send via Google API
             Message message = new Message();
             message.setRaw(encodedEmail);
 
-            // FIX 5: Use 'client' from the getter
-            client.users().messages().send("me", message).execute();
+            gmailClient.users().messages().send("me", message).execute();
             System.out.println("✅ Email sent successfully to: " + to);
 
         } catch (Exception e) {
