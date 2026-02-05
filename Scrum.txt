@@ -171,3 +171,90 @@ Elizabeth
     What will I do today? Will look into how to close a sprint in Jira. Staff dashboard, sprucing
     continued.
     What impediments are blocking me? Merge conflics after two of us were working on sidebar layout.
+
+2026-02-05
+  Minh
+    What did I do yesterday? Still working on email and ability to send email.
+    What will I do today? Testing email functionality. Front end email view.
+    What impediments are blocking me?
+
+  Fatemeh
+    What did I do yesterday? return request backend. Will put presigned URL in storage config.
+    Will test purchase order backend.
+    What will I do today? return request backend. Will put presigned URL in storage config. Will
+    test purchase order backend.
+    What impediments are blocking me? Had problems running application.
+
+  Jonathan
+    What did I do yesterday? Figuring out why live site doesn't work (AGAIN!). Adding views.
+    What will I do today? Pull request. Will look at routing.
+    What impediments are blocking me?
+
+  Elizabeth
+    What did I do yesterday? Connected forecast view and Manager sidebar. Closed first sprint.
+    What will I do today? Will look into how to close a sprint in Jira. Staff dashboard, sprucing
+    continued.
+    What impediments are blocking me? Merge conflics after two of us were working on sidebar layout.
+
+2026-02-06
+  Minh
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Fatemeh
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Jonathan
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Elizabeth
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+2026-02-08
+  Minh
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Fatemeh
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Jonathan
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Elizabeth
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+2026-02-09
+  Minh
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Fatemeh
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Jonathan
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Elizabeth
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
