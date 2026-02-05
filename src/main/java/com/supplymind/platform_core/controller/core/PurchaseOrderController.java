@@ -5,7 +5,7 @@ import com.supplymind.platform_core.common.util.PaginationDefaults;
 import com.supplymind.platform_core.dto.core.purchaseorder.*;
 import com.supplymind.platform_core.service.core.PurchaseOrderService;
 
-// Services & Models
+
 import com.supplymind.platform_core.model.auth.User;
 import com.supplymind.platform_core.model.core.PurchaseOrder;
 import com.supplymind.platform_core.repository.auth.UserRepository;
@@ -14,6 +14,7 @@ import com.supplymind.platform_core.service.common.PdfGenerationService;
 import com.supplymind.platform_core.service.communication.EmailProvider;
 import com.supplymind.platform_core.service.intel.AiContentService;
 import org.springframework.transaction.annotation.Transactional;
+import com.supplymind.platform_core.service.communication.InboxService;
 
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -44,6 +45,7 @@ public class PurchaseOrderController {
     private final EmailProvider emailProvider;
     private final AiContentService aiContentService;
     private final PdfGenerationService pdfGenerationService;
+    private final InboxService inboxService;
 
 
     // POST /api/core/purchase-orders - create draft
@@ -223,17 +225,17 @@ public class PurchaseOrderController {
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
     public ResponseEntity<String> sendPurchaseOrder(
             @PathVariable Long poId,
-            @RequestBody SendPurchaseOrderEmailRequest request) { // 👈 Accepts edited content
+            @RequestBody SendPurchaseOrderEmailRequest request) {
         try {
             PurchaseOrder po = purchaseOrderRepository.findById(poId)
                     .orElseThrow(() -> new RuntimeException("Purchase Order not found"));
 
             if (po.getSupplier() == null || po.getSupplier().getContactEmail() == null) {
-                return ResponseEntity.badRequest().body(" Supplier email is missing.");
+                return ResponseEntity.badRequest().body("Supplier email is missing.");
             }
 
-            // 1. Generate Official PDF (Fresh from DB)
             File pdfAttachment = pdfGenerationService.generatePurchaseOrderPdf(po);
+
 
             emailProvider.sendEmail(
                     po.getSupplier().getContactEmail(),
@@ -241,6 +243,12 @@ public class PurchaseOrderController {
                     request.getBody(),
                     pdfAttachment
             );
+
+            inboxService.createInboxForPo(poId);
+
+            po.setStatus(PurchaseOrderStatus.EMAIL_SENT);
+            po.setLastActivityAt(java.time.Instant.now());
+            purchaseOrderRepository.save(po);
 
             return ResponseEntity.ok("Sent PO-" + po.getPoId());
 
