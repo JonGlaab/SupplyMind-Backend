@@ -345,7 +345,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         });
 
         if (fullyReceived) {
-            po.setStatus(PurchaseOrderStatus.CONFIRMED);
+            po.setStatus(PurchaseOrderStatus.DELIVERED);
         }
 
         recalcTotal(po, items);

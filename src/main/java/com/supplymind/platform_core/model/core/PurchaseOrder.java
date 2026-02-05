@@ -49,6 +49,12 @@ public class PurchaseOrder {
     @Column(name = "total_amount", precision = 15, scale = 2)
     private BigDecimal totalAmount;
 
+    @Column(name = "last_activity_at")
+    private java.time.Instant lastActivityAt; // For sorting the Inbox list
+
+    @Column(name = "expected_delivery_date")
+    private java.time.Instant expectedDeliveryDate;
+
     @CreationTimestamp
     @Column(name = "created_on", updatable = false)
     private Instant createdOn;

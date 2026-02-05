@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Properties;
 
 @Service
-@Primary
+@RequiredArgsConstructor
 public class GmailAdapter implements EmailProvider {
 
     private static final String APPLICATION_NAME = "SupplyMind Platform";
@@ -100,76 +100,37 @@ public class GmailAdapter implements EmailProvider {
                 .setAccessType("offline")
                 .build();
 
-        Credential credential = flow.loadCredential("user");
+    @Value("${spring.mail.username}")
+    private String fromEmail;
 
-        // Only try to open a browser if we are NOT on Heroku
-        if (credential == null && System.getenv("DYNO") == null) {
-            LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
-            credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
-        }
-
-        if (credential == null) {
-            throw new RuntimeException("Gmail credential not found. App cannot send email.");
-        }
-
-        return new Gmail.Builder(HTTP_TRANSPORT, JSON_FACTORY, credential)
-                .setApplicationName(APPLICATION_NAME)
-                .build();
-    }
-
+    @Async
     @Override
     public void sendEmail(String to, String subject, String body, File attachment) {
         try {
-            // 1. Create a Jakarta Mail Session
-            Properties props = new Properties();
-            Session session = Session.getDefaultInstance(props, null);
+            System.out.println(" Sending email to: " + to);
 
-            // 2. Build the Email
-            MimeMessage email = new MimeMessage(session);
-            email.setFrom(new InternetAddress("me"));
-            email.addRecipient(jakarta.mail.Message.RecipientType.TO, new InternetAddress(to));
-            email.setSubject(subject);
+            MimeMessage message = mailSender.createMimeMessage();
+            // 'true' means multipart (supports attachments)
+            MimeMessageHelper helper = new MimeMessageHelper(message, true);
 
-            // 3. Handle Content
-            MimeMultipart multipart = new MimeMultipart();
+            helper.setFrom(fromEmail);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(body, true); // 'true' means HTML body
 
-            MimeBodyPart textPart = new MimeBodyPart();
-            textPart.setContent(body, "text/html; charset=utf-8");
-            multipart.addBodyPart(textPart);
-
-            if (attachment != null) {
-                MimeBodyPart attachPart = new MimeBodyPart();
-                attachPart.attachFile(attachment);
-                multipart.addBodyPart(attachPart);
+            // Handle Attachment
+            if (attachment != null && attachment.exists()) {
+                FileSystemResource file = new FileSystemResource(attachment);
+                helper.addAttachment(file.getFilename(), file);
             }
 
-            email.setContent(multipart);
+            mailSender.send(message);
+            System.out.println("✅ Email sent successfully!");
 
-            // 4. Encode
-            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-            email.writeTo(buffer);
-            byte[] rawBytes = buffer.toByteArray();
-            String encodedEmail = Base64.encodeBase64URLSafeString(rawBytes);
-
-            // 5. Send via Google API
-            Message message = new Message();
-            message.setRaw(encodedEmail);
-
-            gmailClient.users().messages().send("me", message).execute();
-            System.out.println("✅ Email sent successfully to: " + to);
-
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to send email via Gmail Adapter", e);
+        } catch (MessagingException e) {
+            System.err.println("❌ Failed to send email: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to send email", e);
         }
-    }
-
-    @Override
-    public List<EmailMessage> searchEmails(String query) {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public String getProviderName() {
-        return "GMAIL";
     }
 }
