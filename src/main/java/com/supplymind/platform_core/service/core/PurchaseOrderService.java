@@ -30,5 +30,8 @@ public interface PurchaseOrderService {
     PurchaseOrderResponse receive(Long poId, ReceivePurchaseOrderRequest req);
 
     ReceivingStatusResponse receivingStatus(Long poId);
+
+    PurchaseOrderResponse updateStatus(Long poId, PurchaseOrderStatusUpdateRequest req);
+
 }
 
