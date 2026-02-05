@@ -28,14 +28,33 @@ public class DemandForecastingService {
     public ForecastResponse calculateForecast(Long productId) {
         Instant now = Instant.now();
         Instant ninetyDaysAgo = now.minus(90, ChronoUnit.DAYS);
+        Instant sixtyDaysAgo = now.minus(60, ChronoUnit.DAYS);
+        Instant thirtyDaysAgo = now.minus(30, ChronoUnit.DAYS);
 
         List<InventoryTransaction> history = transactionRepository.findSalesHistory(
-                productId,
-                InventoryTransactionType.OUT, // Filter only SALES
-                ninetyDaysAgo
+                productId, InventoryTransactionType.OUT, ninetyDaysAgo);
+
+        // Aggregate into 30-day buckets
+        int month3 = history.stream()
+                .filter(t -> t.getTimestamp().isBefore(sixtyDaysAgo))
+                .mapToInt(InventoryTransaction::getQuantity).sum();
+
+        int month2 = history.stream()
+                .filter(t -> t.getTimestamp().isAfter(sixtyDaysAgo) && t.getTimestamp().isBefore(thirtyDaysAgo))
+                .mapToInt(InventoryTransaction::getQuantity).sum();
+
+        int month1 = history.stream()
+                .filter(t -> t.getTimestamp().isAfter(thirtyDaysAgo))
+                .mapToInt(InventoryTransaction::getQuantity).sum();
+
+        // Create the 3 points for the DTO
+        List<ForecastResponse.DataPoint> chartPoints = List.of(
+                new ForecastResponse.DataPoint("60-90 Days Ago", month3),
+                new ForecastResponse.DataPoint("30-60 Days Ago", month2),
+                new ForecastResponse.DataPoint("Last 30 Days", month1)
         );
 
-        // 2. Pre-process Data: Create a continuous list of 90 days (fill gaps with 0.0)
+        // Pre-process Data: Create a continuous list of 90 days (fill gaps with 0.0)
         List<Double> dailySales = new ArrayList<>(Collections.nCopies(90, 0.0));
 
         // Group transactions by "Day Index" (0 = 90 days ago, 89 = Today)
@@ -61,9 +80,7 @@ public class DemandForecastingService {
 
         return ForecastResponse.builder()
                 .productId(productId)
-                .analysisPeriodDays(90)
-                .totalSalesInPeriod((int) totalSales)
-                .averageDailySales(avgDaily)
+                .history(chartPoints)
                 .predictedDemandNext30Days((int) Math.ceil(predictedDemand)) // Always round up forecast
                 .trend(trend)
                 .build();

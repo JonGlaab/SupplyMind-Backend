@@ -40,6 +40,14 @@ public class Inventory {
     @Builder.Default
     private Integer qtyOnHand = 0;
 
+    @Column(name = "min_stock_level", nullable = false)
+    @Builder.Default
+    private Integer minStockLevel = 10; // Default safety net
+
+    @Column(name = "max_stock_level", nullable = false)
+    @Builder.Default
+    private Integer maxStockLevel = 100;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
@@ -47,4 +55,5 @@ public class Inventory {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private Instant updatedAt;
+
 }
