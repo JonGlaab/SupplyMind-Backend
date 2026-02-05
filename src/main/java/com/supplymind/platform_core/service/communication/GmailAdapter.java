@@ -13,7 +13,6 @@ import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.gmail.Gmail;
 import com.google.api.services.gmail.model.Message;
 import com.supplymind.platform_core.dto.intel.email.EmailMessage;
-import com.supplymind.platform_core.service.communication.EmailProvider;
 import org.apache.commons.codec.binary.Base64;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
@@ -23,8 +22,8 @@ import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
-
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
@@ -52,12 +51,24 @@ public class GmailAdapter implements EmailProvider {
         final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
 
         // Load Credentials JSON
+        InputStream in;
         String jsonConfig = System.getenv("GOOGLE_CREDENTIALS_JSON");
-        if (jsonConfig == null) throw new RuntimeException("Missing GOOGLE_CREDENTIALS_JSON");
 
-        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(
-                JSON_FACTORY, new StringReader(jsonConfig)
-        );
+        if (jsonConfig != null && !jsonConfig.isEmpty()) {
+            // Priority 1: Use Environment Variable if present
+            System.out.println("Found GOOGLE_CREDENTIALS_JSON in environment. Using for authentication.");
+            in = new ByteArrayInputStream(jsonConfig.getBytes(StandardCharsets.UTF_8));
+        } else {
+            // Priority 2: Fallback to classpath resource for local development
+            System.out.println("GOOGLE_CREDENTIALS_JSON not found in environment. Attempting to load from classpath: /credentials.json");
+            in = GmailAdapter.class.getResourceAsStream("/credentials.json");
+            if (in == null) {
+                throw new FileNotFoundException("Resource not found: /credentials.json. Please ensure the file exists in src/main/resources or the GOOGLE_CREDENTIALS_JSON environment variable is set.");
+            }
+        }
+
+        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
+
 
         // Setup the tokens directory
         File tokenFolder = new File(TOKENS_DIRECTORY_PATH);

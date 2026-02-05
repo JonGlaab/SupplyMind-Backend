@@ -4,6 +4,7 @@ import com.supplymind.platform_core.model.core.Inventory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -22,4 +23,8 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
             Long warehouseId,
             Long productId
     );
+
+    // Get total quantity for a product across all warehouses
+    @Query("SELECT SUM(i.qtyOnHand) FROM Inventory i WHERE i.product.productId = :productId")
+    Integer findTotalQuantityByProductId(Long productId);
 }
