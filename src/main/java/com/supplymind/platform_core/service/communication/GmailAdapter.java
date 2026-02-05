@@ -38,7 +38,7 @@ public class GmailAdapter implements EmailProvider {
     private static final String TOKENS_DIRECTORY_PATH = "tokens";
     private static final List<String> SCOPES = Collections.singletonList("https://www.googleapis.com/auth/gmail.modify");
 
-    private final Gmail gmailClient;
+    private Gmail gmailClient;
 
     public GmailAdapter() {
         try {
@@ -51,24 +51,37 @@ public class GmailAdapter implements EmailProvider {
     private Gmail authenticate() throws Exception {
         final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
 
-        // 1. Load Credentials from Env Var
+        // Load Credentials JSON
         String jsonConfig = System.getenv("GOOGLE_CREDENTIALS_JSON");
+        if (jsonConfig == null) throw new RuntimeException("Missing GOOGLE_CREDENTIALS_JSON");
+
         GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(
                 JSON_FACTORY, new StringReader(jsonConfig)
         );
 
-        // 2. Setup the tokens directory
+        // Setup the tokens directory
         File tokenFolder = new File(TOKENS_DIRECTORY_PATH);
         if (!tokenFolder.exists()) tokenFolder.mkdirs();
 
-        // 3. BRIDGE: If on Heroku, write the token from the Env Var to the disk
-        String tokenData = System.getenv("GMAIL_TOKEN_VALUE");
-        if (tokenData != null) {
-            java.nio.file.Files.write(
-                    new File(tokenFolder, "StoredCredential").toPath(),
-                    tokenData.getBytes()
-            );
+        // --- HEROKU BINARY BRIDGE ---
+        String tokenDataEncoded = System.getenv("GMAIL_TOKEN_VALUE");
+        if (tokenDataEncoded != null && !tokenDataEncoded.isEmpty()) {
+            try {
+                // Remove any accidental whitespace/newlines from copy-pasting
+                String cleanBase64 = tokenDataEncoded.replaceAll("\\s", "");
+                byte[] decodedBytes = java.util.Base64.getDecoder().decode(cleanBase64);
+
+                // Write the actual binary file to Heroku's ephemeral disk
+                java.nio.file.Files.write(
+                        new File(tokenFolder, "StoredCredential").toPath(),
+                        decodedBytes
+                );
+                System.out.println("✅ Successfully restored Gmail token from Environment Variable.");
+            } catch (Exception e) {
+                System.err.println("❌ Failed to decode GMAIL_TOKEN_VALUE: " + e.getMessage());
+            }
         }
+        // ----------------------------
 
         GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
                 HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
@@ -76,13 +89,16 @@ public class GmailAdapter implements EmailProvider {
                 .setAccessType("offline")
                 .build();
 
-        // 4. Load the credential (it will now find the file we just 'wrote' above)
         Credential credential = flow.loadCredential("user");
 
-        // Fallback for local dev if token doesn't exist yet
+        // Only try to open a browser if we are NOT on Heroku
         if (credential == null && System.getenv("DYNO") == null) {
             LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
             credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
+        }
+
+        if (credential == null) {
+            throw new RuntimeException("Gmail credential not found. App cannot send email.");
         }
 
         return new Gmail.Builder(HTTP_TRANSPORT, JSON_FACTORY, credential)
