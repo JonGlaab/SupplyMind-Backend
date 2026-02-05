@@ -2,9 +2,15 @@ package com.supplymind.platform_core.common.enums;
 
 public enum PurchaseOrderStatus {
     DRAFT,
-    SUBMITTED,
+    PENDING_APPROVAL,
     APPROVED,
-    RECEIVED,
-    CANCELED
+    EMAIL_SENT,
+    SUPPLIER_REPLIED,
+    CONFIRMED,
+    DELAY_EXPECTED,
+    SHIPPED,
+    DELIVERED,
+    COMPLETED,
+    CANCELLED
 }
 

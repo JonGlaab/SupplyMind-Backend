@@ -223,7 +223,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         List<PurchaseOrderItem> items = itemRepo.findAllByPo_PoId(poId);
         if (items.isEmpty()) throw new BadRequestException("Cannot submit PO with no items.");
 
-        po.setStatus(PurchaseOrderStatus.SUBMITTED);
+        po.setStatus(PurchaseOrderStatus.PENDING_APPROVAL);
         recalcTotal(po, items);
 
         return toResponse(po, items);
@@ -237,8 +237,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     public PurchaseOrderResponse approve(Long poId) {
         PurchaseOrder po = requirePo(poId);
 
-        if (po.getStatus() != PurchaseOrderStatus.SUBMITTED) {
-            throw new BadRequestException("Only SUBMITTED POs can be approved.");
+        if (po.getStatus() != PurchaseOrderStatus.PENDING_APPROVAL) {
+            throw new BadRequestException("Only PENDING_APPROVAL POs can be approved.");
         }
 
         po.setStatus(PurchaseOrderStatus.APPROVED);
@@ -255,11 +255,11 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     public PurchaseOrderResponse cancel(Long poId) {
         PurchaseOrder po = requirePo(poId);
 
-        if (po.getStatus() == PurchaseOrderStatus.RECEIVED) {
+        if (po.getStatus() == PurchaseOrderStatus.CONFIRMED) {
             throw new BadRequestException("Cannot cancel a RECEIVED PO.");
         }
 
-        po.setStatus(PurchaseOrderStatus.CANCELED);
+        po.setStatus(PurchaseOrderStatus.CANCELLED);
 
         List<PurchaseOrderItem> items = itemRepo.findAllByPo_PoId(poId);
         return toResponse(po, items);
@@ -274,8 +274,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     public PurchaseOrderResponse receive(Long poId, ReceivePurchaseOrderRequest req) {
         PurchaseOrder po = requirePo(poId);
 
-        if (!(po.getStatus() == PurchaseOrderStatus.APPROVED || po.getStatus() == PurchaseOrderStatus.SUBMITTED)) {
-            throw new BadRequestException("PO must be APPROVED (or SUBMITTED) to receive.");
+        if (!(po.getStatus() == PurchaseOrderStatus.APPROVED || po.getStatus() == PurchaseOrderStatus.PENDING_APPROVAL)) {
+            throw new BadRequestException("PO must be APPROVED (or PENDING_APPROVAL) to receive.");
         }
 
         Map<Long, Integer> receiveMap = req.lines().stream()
@@ -342,7 +342,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         });
 
         if (fullyReceived) {
-            po.setStatus(PurchaseOrderStatus.RECEIVED);
+            po.setStatus(PurchaseOrderStatus.CONFIRMED);
         }
 
         recalcTotal(po, items);
