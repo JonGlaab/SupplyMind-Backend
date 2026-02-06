@@ -28,8 +28,9 @@ public class ReturnRequest {
     private PurchaseOrder po;
 
     @Lob
-    @Column(name = "reason", nullable = false)
+    @Column(name = "reason", nullable = false, columnDefinition = "LONGTEXT")
     private String reason;
+
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 40)
