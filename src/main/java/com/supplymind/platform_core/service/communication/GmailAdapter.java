@@ -3,6 +3,7 @@ package com.supplymind.platform_core.service.communication;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -11,8 +12,10 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class GmailAdapter implements EmailProvider {
 
@@ -25,29 +28,38 @@ public class GmailAdapter implements EmailProvider {
     @Override
     public void sendEmail(String to, String subject, String body, File attachment) {
         try {
-            System.out.println("📤 Sending email to: " + to);
+            log.info("📤 Sending email to: {}", to);
 
             MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true);
+            // True = Multipart (needed for attachments)
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
 
             helper.setFrom(fromEmail);
             helper.setTo(to);
             helper.setSubject(subject);
-            helper.setText(body, true); // 'true' means HTML body
+            helper.setText(body, true);
 
-            // Handle Attachment
+
             if (attachment != null && attachment.exists()) {
                 FileSystemResource file = new FileSystemResource(attachment);
                 helper.addAttachment(file.getFilename(), file);
             }
 
             mailSender.send(message);
-            System.out.println("✅ Email sent successfully!");
+            log.info("✅ Email sent successfully to {}", to);
 
         } catch (MessagingException e) {
-            System.err.println("❌ Failed to send email: " + e.getMessage());
-            e.printStackTrace();
+            log.error("❌ Failed to send email", e);
             throw new RuntimeException("Failed to send email", e);
+        } finally {
+            if (attachment != null && attachment.exists()) {
+                boolean deleted = attachment.delete();
+                if (!deleted) {
+                    log.warn("⚠️ Could not delete temp file: {}", attachment.getAbsolutePath());
+                } else {
+                    log.debug("🗑️ Temp file cleaned up.");
+                }
+            }
         }
     }
 }

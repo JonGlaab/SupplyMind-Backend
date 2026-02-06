@@ -1,5 +1,7 @@
 package com.supplymind.platform_core.controller.auth;
 
+import com.supplymind.platform_core.model.auth.User;
+import com.supplymind.platform_core.repository.auth.UserRepository;
 import com.supplymind.platform_core.service.auth.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -13,7 +15,14 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    @Autowired private AuthService authService;
+    private final AuthService authService;
+    private final UserRepository userRepository;
+
+    public AuthController(AuthService authService, UserRepository userRepository) {
+        this.authService = authService;
+        this.userRepository = userRepository;
+    }
+
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> req) {
@@ -58,6 +67,25 @@ public class AuthController {
 
         } catch (Exception e) {
             return ResponseEntity.status(404).body(e.getMessage());
+        }
+    }
+    @PutMapping("/me/signature")
+    public ResponseEntity<?> updateSignature(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody Map<String, String> body
+    ) {
+        try {
+            String newUrl = body.get("signatureUrl");
+
+            User user = userRepository.findByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            user.setSignatureUrl(newUrl);
+            userRepository.save(user);
+
+            return ResponseEntity.ok(Map.of("message", "Signature updated"));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Failed to update signature");
         }
     }
 }
