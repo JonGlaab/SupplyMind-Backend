@@ -6,20 +6,16 @@ import com.supplymind.platform_core.dto.core.inventory.InventoryTransactionReque
 import com.supplymind.platform_core.dto.core.inventory.InventoryTransactionResponse;
 import com.supplymind.platform_core.exception.BadRequestException;
 import com.supplymind.platform_core.exception.NotFoundException;
-import com.supplymind.platform_core.model.core.Inventory;
-import com.supplymind.platform_core.model.core.InventoryTransaction;
-import com.supplymind.platform_core.model.core.Product;
-import com.supplymind.platform_core.model.core.Warehouse;
-import com.supplymind.platform_core.repository.core.InventoryRepository;
-import com.supplymind.platform_core.repository.core.InventoryTransactionRepository;
-import com.supplymind.platform_core.repository.core.ProductRepository;
-import com.supplymind.platform_core.repository.core.WarehouseRepository;
+import com.supplymind.platform_core.model.core.*;
+import com.supplymind.platform_core.repository.core.*;
 import com.supplymind.platform_core.service.core.InventoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +25,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final InventoryTransactionRepository txRepo;
     private final WarehouseRepository warehouseRepo;
     private final ProductRepository productRepo;
+    private final SupplierProductRepository supplierProductRepo;
 
     @Override
     @Transactional(readOnly = true)
@@ -61,6 +58,13 @@ public class InventoryServiceImpl implements InventoryService {
         }
 
         return txRepo.findAll(pageable).map(this::toTxResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<InventoryResponse> findLowStock(Long warehouseId, Long supplierId, Pageable pageable) {
+        return inventoryRepo.findLowStock(warehouseId, supplierId, pageable)
+                .map(this::toResponse);
     }
 
     private InventoryTransactionResponse toTxResponse(com.supplymind.platform_core.model.core.InventoryTransaction tx) {
@@ -125,13 +129,20 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     private InventoryResponse toResponse(Inventory inv) {
+        List<SupplierProduct> supplierProducts = supplierProductRepo.findAllByProduct_ProductId(inv.getProduct().getProductId());
+        Supplier supplier = !supplierProducts.isEmpty() ? supplierProducts.get(0).getSupplier() : null;
+
         return new InventoryResponse(
                 inv.getInventoryId(),
                 inv.getWarehouse().getWarehouseId(),
+                inv.getWarehouse().getLocationName(),
                 inv.getProduct().getProductId(),
                 inv.getProduct().getSku(),
                 inv.getProduct().getName(),
                 inv.getQtyOnHand(),
+                inv.getProduct().getReorderPoint(),
+                supplier != null ? supplier.getSupplierId() : null,
+                supplier != null ? supplier.getName() : null,
                 inv.getCreatedAt(),
                 inv.getUpdatedAt()
         );

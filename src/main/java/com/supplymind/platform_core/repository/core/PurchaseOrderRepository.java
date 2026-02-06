@@ -5,10 +5,18 @@ import com.supplymind.platform_core.model.core.PurchaseOrder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Long> {
+
+    @Query("SELECT po FROM PurchaseOrder po " +
+           "LEFT JOIN FETCH po.supplier " +
+           "LEFT JOIN FETCH po.warehouse " +
+           "LEFT JOIN FETCH po.buyer " +
+           "ORDER BY po.poId DESC")
+    Page<PurchaseOrder> findAllWithDetails(Pageable pageable);
 
     // ---------- Single filters ----------
 

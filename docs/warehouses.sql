@@ -1,0 +1,2 @@
+INSERT INTO defaultdb.warehouses (warehouse_id, location_name, address, capacity, is_deleted, created_at, updated_at) VALUES (1, 'Main Distribution Center', 'Montreal, QC', 10000, 0, '2026-02-02 23:18:06', '2026-02-02 23:18:06');
+INSERT INTO defaultdb.warehouses (warehouse_id, location_name, address, capacity, is_deleted, created_at, updated_at) VALUES (2, 'West Coast Hub', 'Vancouver, BC', 5000, 0, '2026-02-02 23:18:06', '2026-02-02 23:18:06');
