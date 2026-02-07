@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -30,7 +31,6 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional(readOnly = true)
     public Page<InventoryResponse> listByWarehouse(Long warehouseId, Pageable pageable) {
-        // Validate warehouse exists
         warehouseRepo.findById(warehouseId)
                 .orElseThrow(() -> new NotFoundException("Warehouse not found: " + warehouseId));
 
@@ -105,7 +105,7 @@ public class InventoryServiceImpl implements InventoryService {
         int updatedQty = switch (req.type()) {
             case IN, RETURN -> current + qty;
             case OUT -> current - qty;
-            case ADJUST -> qty; // absolute set, not delta
+            case ADJUST -> qty;
         };
 
         if (updatedQty < 0) {
@@ -143,6 +143,7 @@ public class InventoryServiceImpl implements InventoryService {
                 inv.getProduct().getReorderPoint(),
                 supplier != null ? supplier.getSupplierId() : null,
                 supplier != null ? supplier.getName() : null,
+                inv.getProduct().getUnitPrice(),
                 inv.getCreatedAt(),
                 inv.getUpdatedAt()
         );

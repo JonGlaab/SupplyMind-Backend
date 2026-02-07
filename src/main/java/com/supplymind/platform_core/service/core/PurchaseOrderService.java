@@ -13,6 +13,8 @@ public interface PurchaseOrderService {
 
     PurchaseOrderResponse get(Long poId);
 
+    void delete(Long poId);
+
     PurchaseOrderResponse updateHeader(Long poId, PurchaseOrderUpdateRequest req);
 
     PurchaseOrderItemResponse addItem(Long poId, PurchaseOrderItemCreateRequest req);
@@ -34,4 +36,3 @@ public interface PurchaseOrderService {
     PurchaseOrderResponse updateStatus(Long poId, PurchaseOrderStatusUpdateRequest req);
 
 }
-

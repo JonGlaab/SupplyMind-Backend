@@ -1,5 +1,6 @@
 package com.supplymind.platform_core.dto.core.inventory;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 public record InventoryResponse(
@@ -13,6 +14,7 @@ public record InventoryResponse(
         Integer reorderPoint,
         Long supplierId,
         String supplierName,
+        BigDecimal unitPrice,
         Instant createdAt,
         Instant updatedAt
 ) {}

@@ -118,6 +118,16 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         return toResponse(po, items);
     }
 
+    @Override
+    @Transactional
+    public void delete(Long poId) {
+        PurchaseOrder po = requirePo(poId);
+        ensureDraft(po); // Only allow deleting drafts
+
+        itemRepo.deleteAllByPoPoId(poId);
+        poRepo.delete(po);
+    }
+
     // ----------------------------
     // UPDATE HEADER (DRAFT ONLY)
     // ----------------------------
