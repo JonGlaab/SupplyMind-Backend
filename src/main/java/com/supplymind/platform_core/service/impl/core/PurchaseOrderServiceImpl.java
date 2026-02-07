@@ -75,7 +75,25 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     @Override
     @Transactional(readOnly = true)
     public Page<PurchaseOrderResponse> list(PurchaseOrderStatus status, Long supplierId, Long warehouseId, Pageable pageable) {
-        Page<PurchaseOrder> page = poRepo.findAllWithDetails(pageable);
+        Page<PurchaseOrder> page;
+
+        if (status != null && supplierId != null && warehouseId != null) {
+            page = poRepo.findAllByStatusAndSupplier_SupplierIdAndWarehouse_WarehouseId(status, supplierId, warehouseId, pageable);
+        } else if (status != null && supplierId != null) {
+            page = poRepo.findAllByStatusAndSupplier_SupplierId(status, supplierId, pageable);
+        } else if (status != null && warehouseId != null) {
+            page = poRepo.findAllByStatusAndWarehouse_WarehouseId(status, warehouseId, pageable);
+        } else if (supplierId != null && warehouseId != null) {
+            page = poRepo.findAllBySupplier_SupplierIdAndWarehouse_WarehouseId(supplierId, warehouseId, pageable);
+        } else if (status != null) {
+            page = poRepo.findAllByStatus(status, pageable);
+        } else if (supplierId != null) {
+            page = poRepo.findAllBySupplier_SupplierId(supplierId, pageable);
+        } else if (warehouseId != null) {
+            page = poRepo.findAllByWarehouse_WarehouseId(warehouseId, pageable);
+        } else {
+            page = poRepo.findAllWithDetails(pageable);
+        }
 
         List<PurchaseOrderResponse> dtos = page.getContent().stream()
                 .map(po -> toResponse(po, itemRepo.findAllByPo_PoId(po.getPoId())))
