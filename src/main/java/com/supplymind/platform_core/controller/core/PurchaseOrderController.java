@@ -13,6 +13,7 @@ import com.supplymind.platform_core.repository.core.PurchaseOrderRepository;
 import com.supplymind.platform_core.service.common.PdfGenerationService;
 import com.supplymind.platform_core.service.communication.EmailProvider;
 import com.supplymind.platform_core.service.intel.AiContentService;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.transaction.annotation.Transactional;
 import com.supplymind.platform_core.service.communication.InboxService;
 
@@ -31,6 +32,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.security.Principal;
 
 
@@ -164,22 +166,25 @@ public class PurchaseOrderController {
     /**
      * Frontend calls this to show the PDF Preview on the Right Side.
      */
-    @GetMapping("/{poId}/preview-pdf")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
-    @Transactional(readOnly = true)
-    public ResponseEntity<Resource> previewPurchaseOrderPdf(@PathVariable Long poId) {
+    @GetMapping(value = "/{poId}/preview-pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<Resource> previewPurchaseOrderPdf(
+            @PathVariable Long poId,
+            @RequestParam(defaultValue = "false") boolean signed) { 
         try {
             PurchaseOrder po = purchaseOrderRepository.findById(poId)
-                    .orElseThrow(() -> new RuntimeException("Purchase Order not found: " + poId));
+                    .orElseThrow(() -> new RuntimeException("Purchase Order not found"));
 
-            File pdfFile = pdfGenerationService.generatePurchaseOrderPdf(po);
-            FileSystemResource resource = new FileSystemResource(pdfFile);
+            // Pass 'signed' flag to service
+            File pdfFile = pdfGenerationService.generatePurchaseOrderPdf(po, signed);
+
+            InputStreamResource resource = new InputStreamResource(new FileInputStream(pdfFile));
 
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=" + pdfFile.getName())
-                    .contentType(MediaType.APPLICATION_PDF)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=PO-" + po.getPoId() + ".pdf")
                     .contentLength(pdfFile.length())
+                    .contentType(MediaType.TEXT_PLAIN)
                     .body(resource);
+
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().build();
@@ -221,8 +226,9 @@ public class PurchaseOrderController {
      * Manager clicks "Confirm & Send".
      * Accepts the FINAL body (edited by manager) and sends it.
      */
-    @PostMapping("/{poId}/send")
+    @PostMapping("/{poId}/send-email")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
+    @Transactional
     public ResponseEntity<String> sendPurchaseOrder(
             @PathVariable Long poId,
             @RequestBody SendPurchaseOrderEmailRequest request) {
@@ -234,8 +240,8 @@ public class PurchaseOrderController {
                 return ResponseEntity.badRequest().body("Supplier email is missing.");
             }
 
-            File pdfAttachment = pdfGenerationService.generatePurchaseOrderPdf(po);
-
+            // Generate FINAL PDF (Signed if request.isAddSignature() is true)
+            File pdfAttachment = pdfGenerationService.generatePurchaseOrderPdf(po, request.isAddSignature());
 
             emailProvider.sendEmail(
                     po.getSupplier().getContactEmail(),
@@ -244,6 +250,7 @@ public class PurchaseOrderController {
                     pdfAttachment
             );
 
+            // Create Inbox Label
             inboxService.createInboxForPo(poId);
 
             po.setStatus(PurchaseOrderStatus.EMAIL_SENT);
@@ -255,6 +262,27 @@ public class PurchaseOrderController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body("Failed: " + e.getMessage());
+        }
+    }
+    @GetMapping("/{poId}/preview-pdf")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
+    public ResponseEntity<Resource> previewPdf(
+            @PathVariable Long poId,
+            @RequestParam(defaultValue = "false") boolean signed) {
+        try {
+            PurchaseOrder po = purchaseOrderRepository.findById(poId)
+                    .orElseThrow(() -> new RuntimeException("PO not found"));
+
+            File pdfFile = pdfGenerationService.generatePurchaseOrderPdf(po, signed);
+            InputStreamResource resource = new InputStreamResource(new java.io.FileInputStream(pdfFile));
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=PO-" + poId + ".pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(resource);
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
         }
     }
 }

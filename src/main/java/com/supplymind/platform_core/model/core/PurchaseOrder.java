@@ -70,7 +70,7 @@ public class PurchaseOrder {
     private Set<Payment> payments = new LinkedHashSet<>();
 
     @JsonIgnore
-    @OneToMany(mappedBy = "po")
+    @OneToMany(mappedBy = "po", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private Set<ReturnRequest> returns = new LinkedHashSet<>();
 }

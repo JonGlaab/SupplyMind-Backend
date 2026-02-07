@@ -65,5 +65,7 @@ public class User {
     @ColumnDefault("0")
     @Column(name = "needs_password_change")
     private Boolean needsPasswordChange = false;
+    @Column(name = "signature_url")
+    private String signatureUrl;
 
 }

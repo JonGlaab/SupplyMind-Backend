@@ -14,4 +14,10 @@ public interface InboxProvider {
      * Returns clean DTOs, hiding the email provider's complexity.
      */
     List<InboxMessage> fetchMessages(String labelId);
+    /**
+     * Fetches all attachments from a specific label.
+     */
+    byte[] fetchAttachment(String labelId, String messageId, String fileName);
+    void moveMessage(String messageId, String sourceLabel, String targetLabel);
+
 }

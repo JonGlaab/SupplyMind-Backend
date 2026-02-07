@@ -198,24 +198,24 @@ Elizabeth
 
 2026-02-06
   Minh
-    What did I do yesterday?
-    What will I do today?
-    What impediments are blocking me?
+    What did I do yesterday? Email functionality + adding view
+    What will I do today? email testing
+    What impediments are blocking me? nothing ever stops Minh
 
   Fatemeh
-    What did I do yesterday?
-    What will I do today?
-    What impediments are blocking me?
+    What did I do yesterday? return request backend
+    What will I do today? add presigned URL to storage config and backblaze folders
+    What impediments are blocking me? login / key issues
 
   Jonathan
-    What did I do yesterday?
-    What will I do today?
-    What impediments are blocking me?
+    What did I do yesterday? troubleshooting, refactor frontend folders and straighten out routing
+    What will I do today? reconnect returns page with updated backend, add views for staff dashboard and inventory
+    What impediments are blocking me? bugs bugs bugs
 
   Elizabeth
-    What did I do yesterday?
-    What will I do today?
-    What impediments are blocking me?
+    What did I do yesterday? Jira research, troubleshooting, PO dashboard and purchase order view
+    What will I do today? connect low stock to PO dash and allow PO to switch states
+    What impediments are blocking me? learning branches
 
 2026-02-08
   Minh
