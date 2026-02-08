@@ -11,4 +11,6 @@ public interface InventoryService {
     void recordTransaction(InventoryTransactionRequest req);
 
     Page<InventoryTransactionResponse> listTransactions(Long warehouseId, Long productId, Pageable pageable);
+
+    Page<InventoryResponse> findLowStock(Long warehouseId, Long supplierId, Pageable pageable);
 }

@@ -2,6 +2,8 @@ package com.supplymind.platform_core.model.core;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 
 import java.math.BigDecimal;
 
@@ -28,6 +30,7 @@ public class PurchaseOrderItem {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "product_id", nullable = false)
+    @NotFound(action = NotFoundAction.IGNORE)
     private Product product;
 
     @Column(name = "ordered_qty", nullable = false)

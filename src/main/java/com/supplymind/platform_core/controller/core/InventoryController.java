@@ -39,6 +39,17 @@ public class InventoryController {
         return service.listByWarehouse(warehouseId, capPageSize(pageable));
     }
 
+    // GET /api/core/inventory/low-stock?warehouseId=1&supplierId=2
+    @GetMapping("/low-stock")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
+    public Page<InventoryResponse> findLowStock(
+            @RequestParam(required = false) Long warehouseId,
+            @RequestParam(required = false) Long supplierId,
+            @PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = PaginationDefaults.DEFAULT_SORT) Pageable pageable
+    ) {
+        return service.findLowStock(warehouseId, supplierId, capPageSize(pageable));
+    }
+
     // POST /api/core/inventory/transactions
     @PostMapping("/transactions")
     @ResponseStatus(HttpStatus.CREATED)
@@ -58,4 +69,3 @@ public class InventoryController {
     }
 
 }
-

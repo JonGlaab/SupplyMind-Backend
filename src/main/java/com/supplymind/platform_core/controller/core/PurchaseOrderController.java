@@ -1,7 +1,6 @@
 package com.supplymind.platform_core.controller.core;
 
 import com.supplymind.platform_core.common.enums.PurchaseOrderStatus;
-import com.supplymind.platform_core.common.util.PaginationDefaults;
 import com.supplymind.platform_core.dto.core.purchaseorder.*;
 import com.supplymind.platform_core.service.core.PurchaseOrderService;
 
@@ -13,7 +12,8 @@ import com.supplymind.platform_core.repository.core.PurchaseOrderRepository;
 import com.supplymind.platform_core.service.common.PdfGenerationService;
 import com.supplymind.platform_core.service.communication.EmailProvider;
 import com.supplymind.platform_core.service.intel.AiContentService;
-import org.springframework.core.io.InputStreamResource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 import com.supplymind.platform_core.service.communication.InboxService;
 
@@ -32,7 +32,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.security.Principal;
 
 
@@ -40,6 +39,8 @@ import java.security.Principal;
 @RequestMapping("/api/core/purchase-orders")
 @RequiredArgsConstructor
 public class PurchaseOrderController {
+
+    private static final Logger logger = LoggerFactory.getLogger(PurchaseOrderController.class);
 
     private final PurchaseOrderService service;
     private final PurchaseOrderRepository purchaseOrderRepository;
@@ -65,9 +66,9 @@ public class PurchaseOrderController {
             @RequestParam(required = false) PurchaseOrderStatus status,
             @RequestParam(required = false) Long supplierId,
             @RequestParam(required = false) Long warehouseId,
-            @PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = "poId", direction = Sort.Direction.DESC) Pageable pageable
+            @PageableDefault(size = 30, sort = "poId", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        return service.list(status, supplierId, warehouseId, capPageSize(pageable));
+        return service.list(status, supplierId, warehouseId, pageable);
     }
 
     // GET /api/core/purchase-orders/{poId}
@@ -75,6 +76,14 @@ public class PurchaseOrderController {
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
     public PurchaseOrderResponse get(@PathVariable Long poId) {
         return service.get(poId);
+    }
+
+    // DELETE /api/core/purchase-orders/{poId}
+    @DeleteMapping("/{poId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAnyRole('ADMIN','PROCUREMENT_OFFICER')")
+    public void delete(@PathVariable Long poId) {
+        service.delete(poId);
     }
 
     // PATCH /api/core/purchase-orders/{poId} - edit header
@@ -158,35 +167,28 @@ public class PurchaseOrderController {
         return service.receivingStatus(poId);
     }
 
-    private Pageable capPageSize(Pageable pageable) {
-        int size = Math.min(pageable.getPageSize(), PaginationDefaults.MAX_PAGE_SIZE);
-        return PageRequest.of(pageable.getPageNumber(), size, pageable.getSort());
-    }
     //Email
     /**
      * Frontend calls this to show the PDF Preview on the Right Side.
      */
-    @GetMapping(value = "/{poId}/preview-pdf", produces = MediaType.APPLICATION_PDF_VALUE)
-    public ResponseEntity<Resource> previewPurchaseOrderPdf(
-            @PathVariable Long poId,
-            @RequestParam(defaultValue = "false") boolean signed) { 
+    @GetMapping("/{poId}/preview-pdf")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Resource> previewPurchaseOrderPdf(@PathVariable Long poId) {
         try {
             PurchaseOrder po = purchaseOrderRepository.findById(poId)
-                    .orElseThrow(() -> new RuntimeException("Purchase Order not found"));
+                    .orElseThrow(() -> new RuntimeException("Purchase Order not found: " + poId));
 
-            // Pass 'signed' flag to service
-            File pdfFile = pdfGenerationService.generatePurchaseOrderPdf(po, signed);
-
-            InputStreamResource resource = new InputStreamResource(new FileInputStream(pdfFile));
+            File pdfFile = pdfGenerationService.generatePurchaseOrderPdf(po, false);
+            FileSystemResource resource = new FileSystemResource(pdfFile);
 
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=PO-" + po.getPoId() + ".pdf")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=" + pdfFile.getName())
+                    .contentType(MediaType.APPLICATION_PDF)
                     .contentLength(pdfFile.length())
-                    .contentType(MediaType.TEXT_PLAIN)
                     .body(resource);
-
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Error generating PDF preview for PO: {}", poId, e);
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -218,6 +220,7 @@ public class PurchaseOrderController {
             return ResponseEntity.ok(new EmailDraftResponse(subject, body, po.getSupplier().getContactEmail()));
 
         } catch (Exception e) {
+            logger.error("Error generating email draft for PO: {}", poId, e);
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -226,9 +229,8 @@ public class PurchaseOrderController {
      * Manager clicks "Confirm & Send".
      * Accepts the FINAL body (edited by manager) and sends it.
      */
-    @PostMapping("/{poId}/send-email")
+    @PostMapping("/{poId}/send")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
-    @Transactional
     public ResponseEntity<String> sendPurchaseOrder(
             @PathVariable Long poId,
             @RequestBody SendPurchaseOrderEmailRequest request) {
@@ -240,8 +242,8 @@ public class PurchaseOrderController {
                 return ResponseEntity.badRequest().body("Supplier email is missing.");
             }
 
-            // Generate FINAL PDF (Signed if request.isAddSignature() is true)
-            File pdfAttachment = pdfGenerationService.generatePurchaseOrderPdf(po, request.isAddSignature());
+            File pdfAttachment = pdfGenerationService.generatePurchaseOrderPdf(po, true);
+
 
             emailProvider.sendEmail(
                     po.getSupplier().getContactEmail(),
@@ -250,7 +252,6 @@ public class PurchaseOrderController {
                     pdfAttachment
             );
 
-            // Create Inbox Label
             inboxService.createInboxForPo(poId);
 
             po.setStatus(PurchaseOrderStatus.EMAIL_SENT);
@@ -260,30 +261,8 @@ public class PurchaseOrderController {
             return ResponseEntity.ok("Sent PO-" + po.getPoId());
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Error sending email for PO: {}", poId, e);
             return ResponseEntity.internalServerError().body("Failed: " + e.getMessage());
         }
     }
-    @GetMapping("/{poId}/preview-pdf")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
-    public ResponseEntity<Resource> previewPdf(
-            @PathVariable Long poId,
-            @RequestParam(defaultValue = "false") boolean signed) {
-        try {
-            PurchaseOrder po = purchaseOrderRepository.findById(poId)
-                    .orElseThrow(() -> new RuntimeException("PO not found"));
-
-            File pdfFile = pdfGenerationService.generatePurchaseOrderPdf(po, signed);
-            InputStreamResource resource = new InputStreamResource(new java.io.FileInputStream(pdfFile));
-
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=PO-" + poId + ".pdf")
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .body(resource);
-
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().build();
-        }
-    }
 }
-

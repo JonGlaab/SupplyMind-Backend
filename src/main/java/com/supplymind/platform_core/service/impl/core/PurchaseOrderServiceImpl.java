@@ -13,6 +13,7 @@ import com.supplymind.platform_core.service.auth.AuthService;
 import com.supplymind.platform_core.service.core.PurchaseOrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,10 +53,9 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         Warehouse warehouse = warehouseRepo.findById(req.warehouseId())
                 .orElseThrow(() -> new NotFoundException("Warehouse not found: " + req.warehouseId()));
 
-        // Minimal buyer assignment: pick first admin/manager or first user.
-        // Later we can tie to JWT current user.
-        User buyer = userRepo.findAll().stream().findFirst()
-                .orElseThrow(() -> new BadRequestException("No users exist to assign as buyer. Create a user first."));
+        // Use the currently authenticated user as the buyer
+        User buyer = authService.getCurrentUser()
+                .orElseThrow(() -> new BadRequestException("Could not identify current user to assign as buyer."));
 
         PurchaseOrder po = PurchaseOrder.builder()
                 .supplier(supplier)
@@ -73,35 +73,33 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     // LIST WITH FILTERS
     // ----------------------------
     @Override
+    @Transactional(readOnly = true)
     public Page<PurchaseOrderResponse> list(PurchaseOrderStatus status, Long supplierId, Long warehouseId, Pageable pageable) {
         Page<PurchaseOrder> page;
 
         if (status != null && supplierId != null && warehouseId != null) {
             page = poRepo.findAllByStatusAndSupplier_SupplierIdAndWarehouse_WarehouseId(status, supplierId, warehouseId, pageable);
-
         } else if (status != null && supplierId != null) {
             page = poRepo.findAllByStatusAndSupplier_SupplierId(status, supplierId, pageable);
-
         } else if (status != null && warehouseId != null) {
             page = poRepo.findAllByStatusAndWarehouse_WarehouseId(status, warehouseId, pageable);
-
         } else if (supplierId != null && warehouseId != null) {
             page = poRepo.findAllBySupplier_SupplierIdAndWarehouse_WarehouseId(supplierId, warehouseId, pageable);
-
         } else if (status != null) {
             page = poRepo.findAllByStatus(status, pageable);
-
         } else if (supplierId != null) {
             page = poRepo.findAllBySupplier_SupplierId(supplierId, pageable);
-
         } else if (warehouseId != null) {
             page = poRepo.findAllByWarehouse_WarehouseId(warehouseId, pageable);
-
         } else {
-            page = poRepo.findAll(pageable);
+            page = poRepo.findAllWithDetails(pageable);
         }
 
-        return page.map(po -> toResponse(po, itemRepo.findAllByPo_PoId(po.getPoId())));
+        List<PurchaseOrderResponse> dtos = page.getContent().stream()
+                .map(po -> toResponse(po, itemRepo.findAllByPo_PoId(po.getPoId())))
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(dtos, pageable, page.getTotalElements());
     }
 
 
@@ -111,12 +109,23 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     // GET DETAILS
     // ----------------------------
     @Override
+    @Transactional(readOnly = true)
     public PurchaseOrderResponse get(Long poId) {
         PurchaseOrder po = poRepo.findById(poId)
                 .orElseThrow(() -> new NotFoundException("Purchase Order not found: " + poId));
 
         List<PurchaseOrderItem> items = itemRepo.findAllByPo_PoId(poId);
         return toResponse(po, items);
+    }
+
+    @Override
+    @Transactional
+    public void delete(Long poId) {
+        PurchaseOrder po = requirePo(poId);
+        ensureDraft(po); // Only allow deleting drafts
+
+        itemRepo.deleteAllByPoPoId(poId);
+        poRepo.delete(po);
     }
 
     // ----------------------------
@@ -402,6 +411,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     // RECEIVING STATUS
     // ----------------------------
     @Override
+    @Transactional(readOnly = true)
     public ReceivingStatusResponse receivingStatus(Long poId) {
         PurchaseOrder po = requirePo(poId);
         List<PurchaseOrderItem> items = itemRepo.findAllByPo_PoId(poId);
@@ -463,17 +473,22 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
     private PurchaseOrderResponse toResponse(PurchaseOrder po, List<PurchaseOrderItem> items) {
         List<PurchaseOrderItemResponse> itemResponses = items.stream()
+                .filter(item -> item.getProduct() != null)
                 .map(this::toItemResponse)
                 .toList();
 
+        Supplier supplier = po.getSupplier();
+        Warehouse warehouse = po.getWarehouse();
+        User buyer = po.getBuyer();
+
         return new PurchaseOrderResponse(
                 po.getPoId(),
-                po.getSupplier().getSupplierId(),
-                po.getSupplier().getName(),
-                po.getWarehouse().getWarehouseId(),
-                po.getWarehouse().getLocationName(),
-                po.getBuyer().getId(),
-                po.getBuyer().getEmail(),
+                supplier != null ? supplier.getSupplierId() : null,
+                supplier != null ? supplier.getName() : null,
+                warehouse != null ? warehouse.getWarehouseId() : null,
+                warehouse != null ? warehouse.getLocationName() : null,
+                buyer != null ? buyer.getId() : null,
+                buyer != null ? buyer.getEmail() : null,
                 po.getStatus(),
                 po.getTotalAmount(),
                 po.getCreatedOn(),
@@ -482,15 +497,15 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     }
 
     private PurchaseOrderItemResponse toItemResponse(PurchaseOrderItem item) {
+        Product product = item.getProduct();
         return new PurchaseOrderItemResponse(
                 item.getPoItemId(),
-                item.getProduct().getProductId(),
-                item.getProduct().getSku(),
-                item.getProduct().getName(),
+                product != null ? product.getProductId() : null,
+                product != null ? product.getSku() : null,
+                product != null ? product.getName() : null,
                 item.getOrderedQty(),
                 item.getReceivedQty(),
                 item.getUnitCost()
         );
     }
 }
-

@@ -27,8 +27,7 @@ public class ReturnRequest {
     @JoinColumn(name = "po_id", nullable = false)
     private PurchaseOrder po;
 
-    @Lob
-    @Column(name = "reason", nullable = false, columnDefinition = "LONGTEXT")
+    @Column(name = "reason", nullable = false, columnDefinition = "TEXT")
     private String reason;
 
 
