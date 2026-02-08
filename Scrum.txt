@@ -219,23 +219,24 @@ Elizabeth
 
 2026-02-08
   Minh
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? email testing
+    What will I do today? Still testing email.
     What impediments are blocking me?
 
   Fatemeh
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? add presigned URL to storage config and backblaze folders
+    What will I do today? testing storage and backblaze folders.
     What impediments are blocking me?
 
   Jonathan
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? reconnect returns page with updated backend, add views for staff dashboard and inventory
+    What will I do today? Continue staff dashboard.
     What impediments are blocking me?
 
   Elizabeth
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? Shared Jira and project proposal with team 3 for peer testing Monday.
+    Started dashboard for manager to approve PO's.
+    What will I do today? Conitnue manager approval process.
     What impediments are blocking me?
 
 2026-02-09
