@@ -1,4 +1,4 @@
-package com.supplymind.platform_core.dto.intel.email;
+package com.supplymind.platform_core.dto.communication;
 
 import lombok.Builder;
 import lombok.Data;

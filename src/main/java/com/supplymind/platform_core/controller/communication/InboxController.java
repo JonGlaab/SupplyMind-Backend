@@ -1,5 +1,6 @@
-package com.supplymind.platform_core.controller.core;
+package com.supplymind.platform_core.controller.communication;
 
+import com.supplymind.platform_core.dto.communication.InboxConversation;
 import com.supplymind.platform_core.dto.core.purchaseorder.InboxMessage;
 import com.supplymind.platform_core.service.communication.InboxService;
 import lombok.RequiredArgsConstructor;
@@ -20,19 +21,36 @@ public class InboxController {
 
     private final InboxService inboxService;
 
-    // Get Chat History (Triggers AI Scan)
+    /**
+     * Get List of Conversations (Sidebar)
+     * Used by: InboxPage.jsx (loadConversations)
+     */
+    @GetMapping("/conversations")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
+    public ResponseEntity<List<InboxConversation>> getConversations() {
+        return ResponseEntity.ok(inboxService.getConversations());
+    }
+
+    /**
+     * Get Chat History (Triggers AI Scan)
+     * Used by: InboxPage.jsx (loadChat)
+     */
     @GetMapping("/po/{poId}")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
     public ResponseEntity<List<InboxMessage>> getPoChat(@PathVariable Long poId) {
         return ResponseEntity.ok(inboxService.getPoChat(poId));
     }
 
+    /**
+     * Download Attachment
+     * Used by: InboxPage.jsx (handleDownload)
+     */
     @GetMapping("/attachments/{poId}/{fileName}")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
     public ResponseEntity<Resource> downloadAttachment(
             @PathVariable Long poId,
             @PathVariable String fileName,
-            @RequestParam String messageId) { // We pass messageId as query param
+            @RequestParam String messageId) {
 
         try {
             byte[] fileData = inboxService.getAttachment(poId, messageId, fileName);
