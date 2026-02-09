@@ -370,9 +370,17 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         PurchaseOrderStatus current = po.getStatus();
         PurchaseOrderStatus next = req.status();
 
+        if (current == next) return toResponse(po, itemRepo.findAllByPo_PoId(poId));
+
         // Can't change once terminal
         if (current == PurchaseOrderStatus.COMPLETED || current == PurchaseOrderStatus.CANCELLED) {
             throw new BadRequestException("Cannot change status for a " + current + " PO.");
+        }
+
+        // Allow moving back to DRAFT from PENDING_APPROVAL
+        if (current == PurchaseOrderStatus.PENDING_APPROVAL && next == PurchaseOrderStatus.DRAFT) {
+            po.setStatus(next);
+            return toResponse(po, itemRepo.findAllByPo_PoId(poId));
         }
 
         // ✅ Allow DELAY_EXPECTED as a flag after CONFIRMED/SHIPPED (real life)
@@ -386,14 +394,14 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
         // ✅ Normal progression rules
         boolean ok = switch (current) {
-            case DRAFT -> next == PurchaseOrderStatus.PENDING_APPROVAL; // use /submit normally
-            case PENDING_APPROVAL -> next == PurchaseOrderStatus.APPROVED; // use /approve normally
+            case DRAFT -> next == PurchaseOrderStatus.PENDING_APPROVAL;
+            case PENDING_APPROVAL -> next == PurchaseOrderStatus.APPROVED;
             case APPROVED -> next == PurchaseOrderStatus.EMAIL_SENT;
             case EMAIL_SENT -> next == PurchaseOrderStatus.SUPPLIER_REPLIED;
             case SUPPLIER_REPLIED -> next == PurchaseOrderStatus.CONFIRMED;
             case CONFIRMED -> next == PurchaseOrderStatus.SHIPPED;
             case SHIPPED -> next == PurchaseOrderStatus.DELIVERED;
-            case DELIVERED -> next == PurchaseOrderStatus.COMPLETED; // usually done by /receive
+            case DELIVERED -> next == PurchaseOrderStatus.COMPLETED;
             case DELAY_EXPECTED -> next == PurchaseOrderStatus.SHIPPED || next == PurchaseOrderStatus.DELIVERED;
             default -> false;
         };
