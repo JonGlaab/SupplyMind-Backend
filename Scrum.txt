@@ -236,26 +236,28 @@ Elizabeth
   Elizabeth
     What did I do yesterday? Shared Jira and project proposal with team 3 for peer testing Monday.
     Started dashboard for manager to approve PO's.
-    What will I do today? Conitnue manager approval process.
+    What will I do today? Continue manager approval process.
     What impediments are blocking me?
 
 2026-02-09
   Minh
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? Email testing. Fixed some routing issues.
+    What will I do today? Team 2 app testing. Setting/fixing routing permissions.
     What impediments are blocking me?
 
   Fatemeh
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? testing storage and backblaze folders. Data generation. Implemented
+    Stripe in the backend.
+    What will I do today? Team 2 app testing. Fixing routing permissions.
     What impediments are blocking me?
 
   Jonathan
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? Continue staff dashboard.
+    What will I do today? Team 2 app testing. Continuing to develop staff dashboard and inventory
+    transfer.
     What impediments are blocking me?
 
   Elizabeth
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? Continue manager approval process.
+    What will I do today? Team 2 app testing. Connect PO approval to then show modal for email.
     What impediments are blocking me?
