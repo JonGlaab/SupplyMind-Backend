@@ -11,10 +11,11 @@ import java.time.Instant;
 @Getter
 @Setter
 @Entity
-@Table(name = "payments",indexes = {
+@Table(name = "payments", indexes = {
         @Index(name = "po_id", columnList = "po_id")
 })
 public class Payment {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "payment_id", nullable = false)
@@ -26,20 +27,23 @@ public class Payment {
 
     @Size(max = 255)
     @Column(name = "stripe_id")
-    private String stripeId;
+    private String stripeId; // we will store PaymentIntent id here: pi_...
 
     @Column(name = "amount", precision = 15, scale = 2)
     private BigDecimal amount;
 
-
     @Column(name = "status")
-    private String status;
+    private String status; // PENDING, PAID, FAILED, PARTIALLY_REFUNDED, REFUNDED
 
     @Column(name = "paid_at")
     private Instant paidAt;
 
-
     @Column(name = "payment_type", nullable = false, length = 20)
     private String paymentType;
 
+    @Column(name = "refunded_amount", precision = 15, scale = 2)
+    private BigDecimal refundedAmount = BigDecimal.ZERO;
+
+    @Column(name = "currency", length = 10)
+    private String currency = "cad";
 }
