@@ -8,7 +8,14 @@ import com.supplymind.platform_core.model.core.ReturnReceipt;
 import com.supplymind.platform_core.model.core.ReturnRequest;
 import com.supplymind.platform_core.service.core.ReturnService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -16,6 +23,12 @@ import org.springframework.web.bind.annotation.*;
 public class ReturnController {
 
     private final ReturnService returnService;
+
+    @GetMapping("/list")
+    @PreAuthorize("hasRole('MANAGER')")
+    public Page<ReturnRequest> listAll(@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
+        return returnService.getAllReturns(pageable);
+    }
 
     @PostMapping
     public ReturnRequest create(@RequestBody CreateReturnRequestDTO dto) {
