@@ -1,76 +1,90 @@
 package com.supplymind.platform_core.service.impl.common;
 
-import com.supplymind.platform_core.exception.NotFoundException;
+import com.supplymind.platform_core.common.util.StoragePaths;
 import com.supplymind.platform_core.service.common.StorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.core.ResponseBytes;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
-import java.io.IOException;
-import java.time.Instant;
+import java.time.Duration;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class StorageServiceImpl implements StorageService {
 
-    private final S3Client s3;
+    private final S3Presigner presigner;
 
     @Value("${b2.bucket}")
     private String bucket;
 
+    @Value("${b2.presign.put.minutes:15}")
+    private long presignPutMinutes;
+
+    @Value("${b2.presign.get.minutes:30}")
+    private long presignGetMinutes;
+
     @Override
-    public String upload(MultipartFile file, String folder) {
-        try {
-            String safeName = file.getOriginalFilename() == null ? "file" : file.getOriginalFilename();
-            String key = folder + "/" + Instant.now().toEpochMilli() + "-" + UUID.randomUUID() + "-" + safeName;
+    public String buildObjectKey(String category, Long ownerId, String fileName) {
+        String safeName = sanitizeFilename(fileName);
+        String ext = getExtension(safeName);
 
-            PutObjectRequest putReq = PutObjectRequest.builder()
-                    .bucket(bucket)
-                    .key(key)
-                    .contentType(file.getContentType())
-                    .build();
+        String prefix = switch (category) {
+            case "product-image" -> StoragePaths.PRODUCT_IMAGES + ownerId + "/";
+            case "return-photo"  -> StoragePaths.RETURN_PHOTOS + ownerId + "/";
+            case "invoice"       -> StoragePaths.INVOICES + ownerId + "/";
+            case "signature"     -> StoragePaths.SIGNATURES + ownerId + "/";
+            default -> throw new IllegalArgumentException("Unknown category: " + category);
+        };
 
-            s3.putObject(putReq, RequestBody.fromBytes(file.getBytes()));
-            return key;
-
-        } catch (IOException e) {
-            throw new RuntimeException("Upload failed: " + e.getMessage(), e);
-        }
+        return prefix + UUID.randomUUID() + (ext.isEmpty() ? "" : "." + ext);
     }
 
     @Override
-    public byte[] download(String key) {
-        try {
-            GetObjectRequest getReq = GetObjectRequest.builder()
-                    .bucket(bucket)
-                    .key(key)
-                    .build();
+    public String presignPutUrl(String objectKey, String contentType) {
+        PutObjectRequest putReq = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(objectKey)
+                .contentType(contentType != null ? contentType : MediaType.APPLICATION_OCTET_STREAM_VALUE)
+                .build();
 
-            ResponseBytes<GetObjectResponse> bytes = s3.getObjectAsBytes(getReq);
-            return bytes.asByteArray();
+        PutObjectPresignRequest presignReq = PutObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofMinutes(presignPutMinutes))
+                .putObjectRequest(putReq)
+                .build();
 
-        } catch (NoSuchKeyException e) {
-            throw new NotFoundException("File not found: " + key);
-        }
+        return presigner.presignPutObject(presignReq).url().toString();
     }
 
     @Override
-    public void delete(String key) {
-        try {
-            DeleteObjectRequest delReq = DeleteObjectRequest.builder()
-                    .bucket(bucket)
-                    .key(key)
-                    .build();
-            s3.deleteObject(delReq);
-        } catch (S3Exception e) {
-            throw new RuntimeException("Delete failed: " + e.getMessage(), e);
-        }
+    public String presignGetUrl(String objectKey) {
+        GetObjectRequest getReq = GetObjectRequest.builder()
+                .bucket(bucket)
+                .key(objectKey)
+                .build();
+
+        GetObjectPresignRequest presignReq = GetObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofMinutes(presignGetMinutes))
+                .getObjectRequest(getReq)
+                .build();
+
+        return presigner.presignGetObject(presignReq).url().toString();
+    }
+
+    private String sanitizeFilename(String name) {
+        if (name == null) return "file";
+        return name.replaceAll("[^a-zA-Z0-9._-]", "_");
+    }
+
+    private String getExtension(String name) {
+        int i = name.lastIndexOf('.');
+        if (i < 0 || i == name.length() - 1) return "";
+        return name.substring(i + 1).toLowerCase();
     }
 }
-

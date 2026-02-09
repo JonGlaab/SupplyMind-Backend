@@ -43,6 +43,7 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/core/**").permitAll() //For testing only, TODO: change after depends on role
 
+                        .requestMatchers("/api/storage/**").permitAll()
                         //this one should be on bottom of the list so other api can run first
                         .requestMatchers("/api/**").hasAnyRole("ADMIN", "MANAGER") //For testing
                         // view only.
