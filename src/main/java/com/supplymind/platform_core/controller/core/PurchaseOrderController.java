@@ -130,7 +130,7 @@ public class PurchaseOrderController {
     // POST /api/core/purchase-orders/{poId}/approve (optional)
     @PostMapping("/{poId}/approve")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
-    public PurchaseOrderResponse approve(@PathVariable Long poId) {
+    public ApprovalResponse approve(@PathVariable Long poId) {
         return service.approve(poId);
     }
 

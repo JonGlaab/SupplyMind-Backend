@@ -25,7 +25,7 @@ public interface PurchaseOrderService {
 
     PurchaseOrderResponse submit(Long poId);
 
-    PurchaseOrderResponse approve(Long poId);
+    ApprovalResponse approve(Long poId);
 
     PurchaseOrderResponse cancel(Long poId);
 

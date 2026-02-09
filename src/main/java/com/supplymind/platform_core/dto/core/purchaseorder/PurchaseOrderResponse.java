@@ -17,6 +17,6 @@ public record PurchaseOrderResponse(
         PurchaseOrderStatus status,
         BigDecimal totalAmount,
         Instant createdOn,
+        String pdfUrl,
         List<PurchaseOrderItemResponse> items
 ) {}
-
