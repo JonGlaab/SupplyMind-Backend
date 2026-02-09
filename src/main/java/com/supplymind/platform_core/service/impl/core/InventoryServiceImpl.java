@@ -63,7 +63,7 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional(readOnly = true)
     public Page<InventoryResponse> findLowStock(Long warehouseId, Long supplierId, Pageable pageable) {
-        return inventoryRepo.findLowStock(warehouseId, supplierId, pageable)
+        return inventoryRepo.findLowStock(warehouseId, pageable)
                 .map(this::toResponse);
     }
 

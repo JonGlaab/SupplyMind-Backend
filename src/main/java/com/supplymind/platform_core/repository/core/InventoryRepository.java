@@ -17,7 +17,11 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     Optional<Inventory> findByProduct_ProductId(Long productId);
 
     // ✅ New: list inventory per warehouse (paginated)
-    Page<Inventory> findAllByWarehouse_WarehouseId(Long warehouseId, Pageable pageable);
+    @Query("SELECT i FROM Inventory i " +
+            "JOIN FETCH i.product " +
+            "JOIN FETCH i.warehouse " +
+            "WHERE i.warehouse.warehouseId = :warehouseId")
+    Page<Inventory> findAllByWarehouse_WarehouseId(@Param("warehouseId") Long warehouseId, Pageable pageable);
 
     // ✅ New: get inventory row for a specific warehouse + product
     Optional<Inventory> findByWarehouse_WarehouseIdAndProduct_ProductId(
@@ -29,13 +33,13 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     @Query("SELECT SUM(i.qtyOnHand) FROM Inventory i WHERE i.product.productId = :productId")
     Integer findTotalQuantityByProductId(Long productId);
 
-    @Query("SELECT i FROM Inventory i JOIN i.product p " +
-           "WHERE i.qtyOnHand < p.reorderPoint " +
-           "AND (:warehouseId IS NULL OR i.warehouse.warehouseId = :warehouseId) " +
-           "AND (:supplierId IS NULL OR EXISTS (SELECT sp FROM SupplierProduct sp WHERE sp.product = p AND sp.supplier.supplierId = :supplierId))")
+    @Query("SELECT i FROM Inventory i " +
+            "JOIN FETCH i.product p " +
+            "JOIN FETCH i.warehouse w " +
+            "WHERE i.qtyOnHand < p.reorderPoint " +
+            "AND (:warehouseId IS NULL OR w.warehouseId = :warehouseId)")
     Page<Inventory> findLowStock(
             @Param("warehouseId") Long warehouseId,
-            @Param("supplierId") Long supplierId,
             Pageable pageable
     );
 }

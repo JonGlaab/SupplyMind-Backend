@@ -11,6 +11,8 @@ import com.supplymind.platform_core.repository.core.ReturnRequestRepository;
 import com.supplymind.platform_core.service.core.ReturnService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -262,6 +264,11 @@ public class ReturnServiceImpl implements ReturnService {
     @Override
     public ReturnRequest getReturn(Long returnId) {
         return get(returnId);
+    }
+
+    @Override
+    public Page<ReturnRequest> getAllReturns(Pageable pageable) {
+        return returnRepo.findAll(pageable);
     }
 
     private ReturnRequest get(Long returnId) {
