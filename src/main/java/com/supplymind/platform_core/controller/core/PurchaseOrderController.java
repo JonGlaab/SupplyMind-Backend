@@ -177,7 +177,9 @@ public class PurchaseOrderController {
             PurchaseOrder po = purchaseOrderRepository.findById(poId)
                     .orElseThrow(() -> new RuntimeException("Purchase Order not found: " + poId));
 
-            File pdfFile = pdfGenerationService.generatePurchaseOrderPdf(po, false);
+            // A PO is signed if it has an approver.
+            boolean isSigned = po.getApprover() != null;
+            File pdfFile = pdfGenerationService.generatePurchaseOrderPdf(po, po.getApprover(), isSigned);
             FileSystemResource resource = new FileSystemResource(pdfFile);
 
             return ResponseEntity.ok()
@@ -244,7 +246,7 @@ public class PurchaseOrderController {
                 return ResponseEntity.badRequest().body("Supplier email is missing.");
             }
 
-            File pdfAttachment = pdfGenerationService.generatePurchaseOrderPdf(po, true);
+            File pdfAttachment = pdfGenerationService.generatePurchaseOrderPdf(po, po.getApprover(), true);
 
 
             emailProvider.sendEmail(

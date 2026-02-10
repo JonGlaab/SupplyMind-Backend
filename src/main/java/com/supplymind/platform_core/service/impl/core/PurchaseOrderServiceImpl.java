@@ -103,11 +103,11 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             page = poRepo.findAllWithDetails(pageable);
         }
 
-        List<PurchaseOrderResponse> dtos = page.getContent().stream()
+        List<PurchaseOrderResponse> dtoList = page.getContent().stream()
                 .map(po -> toResponse(po, itemRepo.findAllByPo_PoId(po.getPoId())))
                 .collect(Collectors.toList());
 
-        return new PageImpl<>(dtos, pageable, page.getTotalElements());
+        return new PageImpl<>(dtoList, pageable, page.getTotalElements());
     }
 
 
@@ -263,7 +263,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 .orElseThrow(() -> new BadRequestException("Could not identify current user to set as approver."));
         po.setApprover(approver);
 
-        generateAndStorePdf(po);
+        generateAndStorePdf(po, approver);
 
         po.setStatus(PurchaseOrderStatus.APPROVED);
         poRepo.save(po);
@@ -421,7 +421,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             User approver = authService.getCurrentUser()
                     .orElseThrow(() -> new BadRequestException("Could not identify current user to set as approver."));
             po.setApprover(approver);
-            generateAndStorePdf(po);
+            generateAndStorePdf(po, approver);
         }
 
         po.setStatus(next);
@@ -542,10 +542,10 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         );
     }
 
-    private void generateAndStorePdf(PurchaseOrder po) {
+    private void generateAndStorePdf(PurchaseOrder po, User approver) {
         try {
             // 1. Generate PDF
-            File pdfFile = pdfGenerationService.generatePurchaseOrderPdf(po, po.getApprover(), true);
+            File pdfFile = pdfGenerationService.generatePurchaseOrderPdf(po, approver, true);
 
             // 2. Upload to Storage
             String objectKey = storageService.buildObjectKey(
@@ -559,8 +559,10 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             po.setPdfUrl(objectKey);
 
             // 4. Clean up temp file
-            if (!pdfFile.delete()) {
-                log.warn("Could not delete temporary PDF file: {}", pdfFile.getAbsolutePath());
+            if (pdfFile.exists()) {
+                if (!pdfFile.delete()) {
+                    log.warn("Could not delete temporary PDF file: {}", pdfFile.getAbsolutePath());
+                }
             }
 
         } catch (Exception e) {
