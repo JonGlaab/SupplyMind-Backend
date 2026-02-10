@@ -261,3 +261,27 @@ Elizabeth
     What did I do yesterday? Continue manager approval process.
     What will I do today? Team 2 app testing. Connect PO approval to then show modal for email.
     What impediments are blocking me?
+
+2026-02-10
+  Minh
+    What did I do yesterday? Team 2 app testing. Setting/fixing routing permissions.
+    What will I do today? Testing the front end. Logic for mobile app or implementation for
+    notifications.
+    What impediments are blocking me?
+
+  Fatemeh
+    What did I do yesterday? Team 2 app testing. Fixing routing permissions.
+    What will I do today? Fixing routing permissions. Stripe front end.
+    What impediments are blocking me?
+
+  Jonathan
+    What did I do yesterday? Team 2 app testing. Continuing to develop staff dashboard and inventory
+     transfer.
+    What will I do today? Staff dashboard and receiving and return requests.
+    What impediments are blocking me?
+
+  Elizabeth
+    What did I do yesterday? Team 2 app testing. Connect PO approval to then show modal for email.
+    What will I do today? Debug email process for PO's. Connect email vie to the 'inbox' button in
+    the navigation tab.
+    What impediments are blocking me?
