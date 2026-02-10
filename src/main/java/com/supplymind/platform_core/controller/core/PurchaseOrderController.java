@@ -231,12 +231,19 @@ public class PurchaseOrderController {
      */
     @PostMapping("/{poId}/send")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
+    @Transactional
     public ResponseEntity<String> sendPurchaseOrder(
             @PathVariable Long poId,
             @RequestBody SendPurchaseOrderEmailRequest request) {
         try {
             PurchaseOrder po = purchaseOrderRepository.findById(poId)
                     .orElseThrow(() -> new RuntimeException("Purchase Order not found"));
+
+            // Eagerly fetch required data
+            po.getSupplier().getName();
+            if (po.getApprover() != null) {
+                po.getApprover().getFirstName();
+            }
 
             String recipient = (request.getToEmail() != null && !request.getToEmail().isBlank())
                     ? request.getToEmail()
