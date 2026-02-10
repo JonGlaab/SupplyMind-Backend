@@ -42,4 +42,11 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
             @Param("warehouseId") Long warehouseId,
             Pageable pageable
     );
+    @Query("SELECT i FROM Inventory i " +
+            "JOIN FETCH i.product p " +
+            "JOIN FETCH i.warehouse w " +
+            "LEFT JOIN FETCH p.supplierProducts sp " +
+            "LEFT JOIN FETCH sp.supplier s " +
+            "WHERE w.warehouseId = :warehouseId")
+    Page<Inventory> findAllByWarehouseWithDetails(@Param("warehouseId") Long warehouseId, Pageable pageable);
 }

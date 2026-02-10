@@ -129,21 +129,25 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     private InventoryResponse toResponse(Inventory inv) {
-        List<SupplierProduct> supplierProducts = supplierProductRepo.findAllByProduct_ProductId(inv.getProduct().getProductId());
-        Supplier supplier = !supplierProducts.isEmpty() ? supplierProducts.get(0).getSupplier() : null;
+        Product p = inv.getProduct();
+
+        Supplier supplier = p.getSupplierProducts().stream()
+                .findFirst()
+                .map(SupplierProduct::getSupplier)
+                .orElse(null);
 
         return new InventoryResponse(
                 inv.getInventoryId(),
                 inv.getWarehouse().getWarehouseId(),
                 inv.getWarehouse().getLocationName(),
-                inv.getProduct().getProductId(),
-                inv.getProduct().getSku(),
-                inv.getProduct().getName(),
+                p.getProductId(),
+                p.getSku(),
+                p.getName(),
                 inv.getQtyOnHand(),
-                inv.getProduct().getReorderPoint(),
+                p.getReorderPoint(),
                 supplier != null ? supplier.getSupplierId() : null,
                 supplier != null ? supplier.getName() : null,
-                inv.getProduct().getUnitPrice(),
+                p.getUnitPrice(),
                 inv.getCreatedAt(),
                 inv.getUpdatedAt()
         );

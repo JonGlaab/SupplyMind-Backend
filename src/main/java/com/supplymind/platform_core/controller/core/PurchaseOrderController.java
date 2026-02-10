@@ -127,12 +127,10 @@ public class PurchaseOrderController {
         return service.submit(poId);
     }
 
-    // POST /api/core/purchase-orders/{poId}/approve (optional)
+    // Change the return type here
     @PostMapping("/{poId}/approve")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
-    public ApprovalResponse approve(@PathVariable Long poId) {
-        return service.approve(poId);
-    }
+    public PurchaseOrderResponse approve(@PathVariable Long poId) { return service.approve(poId); }
 
     // POST /api/core/purchase-orders/{poId}/cancel
     @PostMapping("/{poId}/cancel")

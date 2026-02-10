@@ -10,7 +10,6 @@ import com.supplymind.platform_core.model.core.*;
 import com.supplymind.platform_core.repository.auth.UserRepository;
 import com.supplymind.platform_core.repository.core.*;
 import com.supplymind.platform_core.service.auth.AuthService;
-import com.supplymind.platform_core.service.common.StorageService;
 import com.supplymind.platform_core.service.core.PurchaseOrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,22 +28,31 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
     private final PurchaseOrderRepository poRepo;
     private final PurchaseOrderItemRepository itemRepo;
+
     private final SupplierRepository supplierRepo;
     private final WarehouseRepository warehouseRepo;
     private final ProductRepository productRepo;
+
     private final InventoryRepository inventoryRepo;
     private final InventoryTransactionRepository txRepo;
+
     private final UserRepository userRepo;
     private final AuthService authService;
-    private final StorageService storageService;
 
+    // ----------------------------
+    // CREATE DRAFT
+    // ----------------------------
     @Override
     @Transactional
     public PurchaseOrderResponse createDraft(PurchaseOrderCreateRequest req) {
+
         Supplier supplier = supplierRepo.findById(req.supplierId())
                 .orElseThrow(() -> new NotFoundException("Supplier not found: " + req.supplierId()));
+
         Warehouse warehouse = warehouseRepo.findById(req.warehouseId())
                 .orElseThrow(() -> new NotFoundException("Warehouse not found: " + req.warehouseId()));
+
+        // Use the currently authenticated user as the buyer
         User buyer = authService.getCurrentUser()
                 .orElseThrow(() -> new BadRequestException("Could not identify current user to assign as buyer."));
 
@@ -60,26 +68,51 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         return toResponse(po, List.of());
     }
 
+    // ----------------------------
+    // LIST WITH FILTERS
+    // ----------------------------
     @Override
     @Transactional(readOnly = true)
     public Page<PurchaseOrderResponse> list(PurchaseOrderStatus status, Long supplierId, Long warehouseId, Pageable pageable) {
         Page<PurchaseOrder> page;
-        if (status != null) {
+
+        if (status != null && supplierId != null && warehouseId != null) {
+            page = poRepo.findAllByStatusAndSupplier_SupplierIdAndWarehouse_WarehouseId(status, supplierId, warehouseId, pageable);
+        } else if (status != null && supplierId != null) {
+            page = poRepo.findAllByStatusAndSupplier_SupplierId(status, supplierId, pageable);
+        } else if (status != null && warehouseId != null) {
+            page = poRepo.findAllByStatusAndWarehouse_WarehouseId(status, warehouseId, pageable);
+        } else if (supplierId != null && warehouseId != null) {
+            page = poRepo.findAllBySupplier_SupplierIdAndWarehouse_WarehouseId(supplierId, warehouseId, pageable);
+        } else if (status != null) {
             page = poRepo.findAllByStatus(status, pageable);
+        } else if (supplierId != null) {
+            page = poRepo.findAllBySupplier_SupplierId(supplierId, pageable);
+        } else if (warehouseId != null) {
+            page = poRepo.findAllByWarehouse_WarehouseId(warehouseId, pageable);
         } else {
             page = poRepo.findAllWithDetails(pageable);
         }
+
         List<PurchaseOrderResponse> dtos = page.getContent().stream()
                 .map(po -> toResponse(po, itemRepo.findAllByPo_PoId(po.getPoId())))
                 .collect(Collectors.toList());
+
         return new PageImpl<>(dtos, pageable, page.getTotalElements());
     }
 
+
+
+
+    // ----------------------------
+    // GET DETAILS
+    // ----------------------------
     @Override
     @Transactional(readOnly = true)
     public PurchaseOrderResponse get(Long poId) {
         PurchaseOrder po = poRepo.findById(poId)
                 .orElseThrow(() -> new NotFoundException("Purchase Order not found: " + poId));
+
         List<PurchaseOrderItem> items = itemRepo.findAllByPo_PoId(poId);
         return toResponse(po, items);
     }
@@ -93,30 +126,46 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         poRepo.delete(po);
     }
 
+    // ----------------------------
+    // UPDATE HEADER (DRAFT ONLY)
+    // ----------------------------
     @Override
     @Transactional
     public PurchaseOrderResponse updateHeader(Long poId, PurchaseOrderUpdateRequest req) {
         PurchaseOrder po = requirePo(poId);
+
         ensureDraft(po);
+
         if (req.supplierId() != null) {
-            po.setSupplier(supplierRepo.findById(req.supplierId())
-                    .orElseThrow(() -> new NotFoundException("Supplier not found: " + req.supplierId())));
+            Supplier s = supplierRepo.findById(req.supplierId())
+                    .orElseThrow(() -> new NotFoundException("Supplier not found: " + req.supplierId()));
+            po.setSupplier(s);
         }
+
         if (req.warehouseId() != null) {
-            po.setWarehouse(warehouseRepo.findById(req.warehouseId())
-                    .orElseThrow(() -> new NotFoundException("Warehouse not found: " + req.warehouseId())));
+            Warehouse w = warehouseRepo.findById(req.warehouseId())
+                    .orElseThrow(() -> new NotFoundException("Warehouse not found: " + req.warehouseId()));
+            po.setWarehouse(w);
         }
-        recalcTotal(po, itemRepo.findAllByPo_PoId(poId));
-        return toResponse(po, itemRepo.findAllByPo_PoId(poId));
+
+        List<PurchaseOrderItem> items = itemRepo.findAllByPo_PoId(poId);
+        recalcTotal(po, items);
+
+        return toResponse(po, items);
     }
 
+    // ----------------------------
+    // ADD ITEM (DRAFT ONLY)
+    // ----------------------------
     @Override
     @Transactional
     public PurchaseOrderItemResponse addItem(Long poId, PurchaseOrderItemCreateRequest req) {
         PurchaseOrder po = requirePo(poId);
         ensureDraft(po);
+
         Product product = productRepo.findById(req.productId())
                 .orElseThrow(() -> new NotFoundException("Product not found: " + req.productId()));
+
         PurchaseOrderItem item = PurchaseOrderItem.builder()
                 .po(po)
                 .product(product)
@@ -124,97 +173,269 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 .receivedQty(0)
                 .unitCost(req.unitCost())
                 .build();
+
         PurchaseOrderItem saved = itemRepo.save(item);
-        recalcTotal(po, itemRepo.findAllByPo_PoId(poId));
+
+        List<PurchaseOrderItem> items = itemRepo.findAllByPo_PoId(poId);
+        recalcTotal(po, items);
+
         return toItemResponse(saved);
     }
 
+    // ----------------------------
+    // UPDATE ITEM (DRAFT ONLY)
+    // ----------------------------
     @Override
     @Transactional
     public PurchaseOrderItemResponse updateItem(Long poId, Long itemId, PurchaseOrderItemUpdateRequest req) {
         PurchaseOrder po = requirePo(poId);
         ensureDraft(po);
+
         PurchaseOrderItem item = requireItem(poId, itemId);
+
         if (req.orderedQty() != null) item.setOrderedQty(req.orderedQty());
         if (req.unitCost() != null) item.setUnitCost(req.unitCost());
+
         PurchaseOrderItem saved = itemRepo.save(item);
-        recalcTotal(po, itemRepo.findAllByPo_PoId(poId));
+
+        List<PurchaseOrderItem> items = itemRepo.findAllByPo_PoId(poId);
+        recalcTotal(po, items);
+
         return toItemResponse(saved);
     }
 
+    // ----------------------------
+    // REMOVE ITEM (DRAFT ONLY)
+    // ----------------------------
     @Override
     @Transactional
     public void removeItem(Long poId, Long itemId) {
         PurchaseOrder po = requirePo(poId);
         ensureDraft(po);
-        itemRepo.delete(requireItem(poId, itemId));
-        recalcTotal(po, itemRepo.findAllByPo_PoId(poId));
+
+        PurchaseOrderItem item = requireItem(poId, itemId);
+        itemRepo.delete(item);
+
+        List<PurchaseOrderItem> items = itemRepo.findAllByPo_PoId(poId);
+        recalcTotal(po, items);
     }
 
+    // ----------------------------
+    // SUBMIT (DRAFT -> SUBMITTED)
+    // ----------------------------
     @Override
     @Transactional
     public PurchaseOrderResponse submit(Long poId) {
         PurchaseOrder po = requirePo(poId);
         ensureDraft(po);
-        if (itemRepo.findAllByPo_PoId(poId).isEmpty()) {
-            throw new BadRequestException("Cannot submit PO with no items.");
-        }
+
+        List<PurchaseOrderItem> items = itemRepo.findAllByPo_PoId(poId);
+        if (items.isEmpty()) throw new BadRequestException("Cannot submit PO with no items.");
+
         po.setStatus(PurchaseOrderStatus.PENDING_APPROVAL);
-        recalcTotal(po, itemRepo.findAllByPo_PoId(poId));
-        return toResponse(po, itemRepo.findAllByPo_PoId(poId));
+        recalcTotal(po, items);
+
+        return toResponse(po, items);
     }
 
+    // ----------------------------
+    // APPROVE (SUBMITTED -> APPROVED)
+    // ----------------------------
     @Override
     @Transactional
-    public ApprovalResponse approve(Long poId) {
+    public PurchaseOrderResponse approve(Long poId) {
         PurchaseOrder po = requirePo(poId);
+
         if (po.getStatus() != PurchaseOrderStatus.PENDING_APPROVAL) {
             throw new BadRequestException("Only PENDING_APPROVAL POs can be approved.");
         }
+
         po.setStatus(PurchaseOrderStatus.APPROVED);
 
-        String objectKey = storageService.buildObjectKey("invoices", po.getPoId(), "invoice.pdf");
-        String presignedUrl = storageService.presignPutUrl(objectKey, "application/pdf");
-        String permanentUrl = storageService.presignGetUrl(objectKey).split("\\?")[0];
-        
-        po.setPdfUrl(permanentUrl);
-        poRepo.save(po);
-
-        return new ApprovalResponse(toResponse(po, itemRepo.findAllByPo_PoId(poId)), presignedUrl);
+        List<PurchaseOrderItem> items = itemRepo.findAllByPo_PoId(poId);
+        return toResponse(po, items);
     }
 
+    // ----------------------------
+    // CANCEL (not RECEIVED)
+    // ----------------------------
     @Override
     @Transactional
     public PurchaseOrderResponse cancel(Long poId) {
         PurchaseOrder po = requirePo(poId);
+
         if (po.getStatus() == PurchaseOrderStatus.COMPLETED) {
             throw new BadRequestException("Cannot cancel a COMPLETED PO.");
         }
+
         po.setStatus(PurchaseOrderStatus.CANCELLED);
-        return toResponse(po, itemRepo.findAllByPo_PoId(poId));
+
+        List<PurchaseOrderItem> items = itemRepo.findAllByPo_PoId(poId);
+        return toResponse(po, items);
     }
 
+
+    // ----------------------------
+    // RECEIVE (APPROVED -> RECEIVED, or SUBMITTED -> RECEIVED if you want)
+    // Updates inventory + writes InventoryTransaction (IN)
+    // ----------------------------
     @Override
     @Transactional
     public PurchaseOrderResponse receive(Long poId, ReceivePurchaseOrderRequest req) {
-        // ... (implementation unchanged)
-        return null;
+        PurchaseOrder po = requirePo(poId);
+
+        if (!(po.getStatus() == PurchaseOrderStatus.APPROVED || po.getStatus() == PurchaseOrderStatus.PENDING_APPROVAL)) {
+            throw new BadRequestException("PO must be APPROVED (or PENDING_APPROVAL) to receive.");
+        }
+
+        Map<Long, Integer> receiveMap = req.lines().stream()
+                .collect(Collectors.toMap(ReceivePurchaseOrderRequest.ReceiveLine::poItemId,
+                        ReceivePurchaseOrderRequest.ReceiveLine::receiveQty,
+                        Integer::sum));
+
+        List<PurchaseOrderItem> items = itemRepo.findAllByPo_PoId(poId);
+
+        // Validate line ids belong to this PO + validate remaining qty
+        for (PurchaseOrderItem item : items) {
+            Integer receiveQty = receiveMap.get(item.getPoItemId());
+            if (receiveQty == null) continue;
+
+            int already = item.getReceivedQty() == null ? 0 : item.getReceivedQty();
+            int ordered = item.getOrderedQty();
+            int remaining = ordered - already;
+
+            if (receiveQty <= 0) throw new BadRequestException("Receive qty must be > 0");
+            if (receiveQty > remaining) {
+                throw new BadRequestException("Receive qty exceeds remaining for item " + item.getPoItemId());
+            }
+        }
+
+        // Apply receiving: update item received_qty, update inventory, write tx
+        for (PurchaseOrderItem item : items) {
+            Integer receiveQty = receiveMap.get(item.getPoItemId());
+            if (receiveQty == null) continue;
+
+            int newReceived = (item.getReceivedQty() == null ? 0 : item.getReceivedQty()) + receiveQty;
+            item.setReceivedQty(newReceived);
+            itemRepo.save(item);
+
+            // Update inventory row for (warehouse, product)
+            Long warehouseId = po.getWarehouse().getWarehouseId();
+            Long productId = item.getProduct().getProductId();
+
+            Inventory inv = inventoryRepo.findByWarehouse_WarehouseIdAndProduct_ProductId(warehouseId, productId)
+                    .orElseGet(() -> Inventory.builder()
+                            .warehouse(po.getWarehouse())
+                            .product(item.getProduct())
+                            .qtyOnHand(0)
+                            .build());
+
+            int current = inv.getQtyOnHand() == null ? 0 : inv.getQtyOnHand();
+            inv.setQtyOnHand(current + receiveQty);
+            inventoryRepo.save(inv);
+
+            // Write transaction
+            InventoryTransaction tx = InventoryTransaction.builder()
+                    .warehouse(po.getWarehouse())
+                    .product(item.getProduct())
+                    .type(InventoryTransactionType.IN)
+                    .quantity(receiveQty)
+                    .build();
+            txRepo.save(tx);
+        }
+
+        // If fully received, mark PO RECEIVED
+        boolean fullyReceived = items.stream().allMatch(i -> {
+            int ordered = i.getOrderedQty() == null ? 0 : i.getOrderedQty();
+            int rec = i.getReceivedQty() == null ? 0 : i.getReceivedQty();
+            return rec >= ordered;
+        });
+
+        if (fullyReceived) {
+            po.setStatus(PurchaseOrderStatus.DELIVERED);
+        }
+
+        recalcTotal(po, items);
+        return toResponse(po, items);
     }
+
 
     @Override
     @Transactional
     public PurchaseOrderResponse updateStatus(Long poId, PurchaseOrderStatusUpdateRequest req) {
-        // ... (implementation unchanged)
-        return null;
+        PurchaseOrder po = requirePo(poId);
+
+        PurchaseOrderStatus current = po.getStatus();
+        PurchaseOrderStatus next = req.status();
+
+        // Can't change once terminal
+        if (current == PurchaseOrderStatus.COMPLETED || current == PurchaseOrderStatus.CANCELLED) {
+            throw new BadRequestException("Cannot change status for a " + current + " PO.");
+        }
+
+        // ✅ Allow DELAY_EXPECTED as a flag after CONFIRMED/SHIPPED (real life)
+        if (next == PurchaseOrderStatus.DELAY_EXPECTED) {
+            if (!(current == PurchaseOrderStatus.CONFIRMED || current == PurchaseOrderStatus.SHIPPED)) {
+                throw new BadRequestException("DELAY_EXPECTED can only be set after CONFIRMED or SHIPPED.");
+            }
+            po.setStatus(PurchaseOrderStatus.DELAY_EXPECTED);
+            return toResponse(po, itemRepo.findAllByPo_PoId(poId));
+        }
+
+        // ✅ Normal progression rules
+        boolean ok = switch (current) {
+            case DRAFT -> next == PurchaseOrderStatus.PENDING_APPROVAL; // use /submit normally
+            case PENDING_APPROVAL -> next == PurchaseOrderStatus.APPROVED; // use /approve normally
+            case APPROVED -> next == PurchaseOrderStatus.EMAIL_SENT;
+            case EMAIL_SENT -> next == PurchaseOrderStatus.SUPPLIER_REPLIED;
+            case SUPPLIER_REPLIED -> next == PurchaseOrderStatus.CONFIRMED;
+            case CONFIRMED -> next == PurchaseOrderStatus.SHIPPED;
+            case SHIPPED -> next == PurchaseOrderStatus.DELIVERED;
+            case DELIVERED -> next == PurchaseOrderStatus.COMPLETED; // usually done by /receive
+            case DELAY_EXPECTED -> next == PurchaseOrderStatus.SHIPPED || next == PurchaseOrderStatus.DELIVERED;
+            default -> false;
+        };
+
+        if (!ok) {
+            throw new BadRequestException("Invalid status transition: " + current + " -> " + next);
+        }
+
+        po.setStatus(next);
+        return toResponse(po, itemRepo.findAllByPo_PoId(poId));
     }
 
+
+    // ----------------------------
+    // RECEIVING STATUS
+    // ----------------------------
     @Override
     @Transactional(readOnly = true)
     public ReceivingStatusResponse receivingStatus(Long poId) {
-        // ... (implementation unchanged)
-        return null;
+        PurchaseOrder po = requirePo(poId);
+        List<PurchaseOrderItem> items = itemRepo.findAllByPo_PoId(poId);
+
+        List<ReceivingStatusResponse.ReceivingLineStatus> lines = items.stream().map(i -> {
+            int ordered = i.getOrderedQty() == null ? 0 : i.getOrderedQty();
+            int received = i.getReceivedQty() == null ? 0 : i.getReceivedQty();
+            int remaining = Math.max(0, ordered - received);
+
+            return new ReceivingStatusResponse.ReceivingLineStatus(
+                    i.getPoItemId(),
+                    i.getProduct().getProductId(),
+                    i.getProduct().getSku(),
+                    i.getProduct().getName(),
+                    ordered,
+                    received,
+                    remaining
+            );
+        }).toList();
+
+        return new ReceivingStatusResponse(po.getPoId(), lines);
     }
 
+    // ----------------------------
+    // Helpers
+    // ----------------------------
     private PurchaseOrder requirePo(Long poId) {
         return poRepo.findById(poId)
                 .orElseThrow(() -> new NotFoundException("Purchase Order not found: " + poId));
@@ -223,6 +444,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private PurchaseOrderItem requireItem(Long poId, Long itemId) {
         PurchaseOrderItem item = itemRepo.findById(itemId)
                 .orElseThrow(() -> new NotFoundException("PO item not found: " + itemId));
+
         if (!Objects.equals(item.getPo().getPoId(), poId)) {
             throw new BadRequestException("Item " + itemId + " does not belong to PO " + poId);
         }
@@ -236,27 +458,40 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     }
 
     private void recalcTotal(PurchaseOrder po, List<PurchaseOrderItem> items) {
-        BigDecimal total = items.stream()
-                .filter(i -> i.getUnitCost() != null && i.getOrderedQty() != null)
-                .map(i -> i.getUnitCost().multiply(BigDecimal.valueOf(i.getOrderedQty())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal total = BigDecimal.ZERO;
+
+        for (PurchaseOrderItem i : items) {
+            if (i.getUnitCost() == null || i.getOrderedQty() == null) continue;
+            total = total.add(i.getUnitCost().multiply(BigDecimal.valueOf(i.getOrderedQty())));
+        }
+
         po.setTotalAmount(total);
+        poRepo.save(po);
     }
 
     private PurchaseOrderResponse toResponse(PurchaseOrder po, List<PurchaseOrderItem> items) {
+        List<PurchaseOrderItemResponse> itemResponses = items.stream()
+                .filter(item -> item.getProduct() != null)
+                .map(this::toItemResponse)
+                .toList();
+
+            Supplier supplier = po.getSupplier();
+        Warehouse warehouse = po.getWarehouse();
+        User buyer = po.getBuyer();
+
         return new PurchaseOrderResponse(
                 po.getPoId(),
-                po.getSupplier() != null ? po.getSupplier().getSupplierId() : null,
-                po.getSupplier() != null ? po.getSupplier().getName() : null,
-                po.getWarehouse() != null ? po.getWarehouse().getWarehouseId() : null,
-                po.getWarehouse() != null ? po.getWarehouse().getLocationName() : null,
-                po.getBuyer() != null ? po.getBuyer().getId() : null,
-                po.getBuyer() != null ? po.getBuyer().getEmail() : null,
+                supplier != null ? supplier.getSupplierId() : null,
+                supplier != null ? supplier.getName() : null,
+                warehouse != null ? warehouse.getWarehouseId() : null,
+                warehouse != null ? warehouse.getLocationName() : null,
+                buyer != null ? buyer.getId() : null,
+                buyer != null ? buyer.getEmail() : null,
                 po.getStatus(),
                 po.getTotalAmount(),
                 po.getCreatedOn(),
                 po.getPdfUrl(),
-                items.stream().map(this::toItemResponse).collect(Collectors.toList())
+                itemResponses
         );
     }
 
