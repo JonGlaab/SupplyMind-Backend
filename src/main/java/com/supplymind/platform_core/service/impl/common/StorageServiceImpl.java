@@ -6,12 +6,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
+import java.io.File;
 import java.time.Duration;
 import java.util.UUID;
 
@@ -19,6 +21,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class StorageServiceImpl implements StorageService {
 
+    private final S3Client s3Client;
     private final S3Presigner presigner;
 
     @Value("${b2.bucket}")
@@ -75,6 +78,19 @@ public class StorageServiceImpl implements StorageService {
                 .build();
 
         return presigner.presignGetObject(presignReq).url().toString();
+    }
+
+    @Override
+    public String uploadFile(String objectKey, File file, String contentType) {
+        PutObjectRequest putReq = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(objectKey)
+                .contentType(contentType)
+                .build();
+
+        s3Client.putObject(putReq, file.toPath());
+
+        return presignGetUrl(objectKey);
     }
 
     private String sanitizeFilename(String name) {

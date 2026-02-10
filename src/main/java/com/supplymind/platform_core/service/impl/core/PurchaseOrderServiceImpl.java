@@ -7,23 +7,30 @@ import com.supplymind.platform_core.exception.BadRequestException;
 import com.supplymind.platform_core.exception.NotFoundException;
 import com.supplymind.platform_core.model.auth.User;
 import com.supplymind.platform_core.model.core.*;
-import com.supplymind.platform_core.repository.auth.UserRepository;
 import com.supplymind.platform_core.repository.core.*;
 import com.supplymind.platform_core.service.auth.AuthService;
+import com.supplymind.platform_core.service.common.PdfGenerationService;
+import com.supplymind.platform_core.service.common.StorageService;
 import com.supplymind.platform_core.service.core.PurchaseOrderService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.File;
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
     private final PurchaseOrderRepository poRepo;
@@ -36,8 +43,10 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final InventoryRepository inventoryRepo;
     private final InventoryTransactionRepository txRepo;
 
-    private final UserRepository userRepo;
     private final AuthService authService;
+
+    private final PdfGenerationService pdfGenerationService;
+    private final StorageService storageService;
 
     // ----------------------------
     // CREATE DRAFT
@@ -250,7 +259,14 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             throw new BadRequestException("Only PENDING_APPROVAL POs can be approved.");
         }
 
+        User approver = authService.getCurrentUser()
+                .orElseThrow(() -> new BadRequestException("Could not identify current user to set as approver."));
+        po.setApprover(approver);
+
+        generateAndStorePdf(po);
+
         po.setStatus(PurchaseOrderStatus.APPROVED);
+        poRepo.save(po);
 
         List<PurchaseOrderItem> items = itemRepo.findAllByPo_PoId(poId);
         return toResponse(po, items);
@@ -400,6 +416,14 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             throw new BadRequestException("Invalid status transition: " + current + " -> " + next);
         }
 
+        // If moving to APPROVED, generate PDF
+        if (next == PurchaseOrderStatus.APPROVED) {
+            User approver = authService.getCurrentUser()
+                    .orElseThrow(() -> new BadRequestException("Could not identify current user to set as approver."));
+            po.setApprover(approver);
+            generateAndStorePdf(po);
+        }
+
         po.setStatus(next);
         return toResponse(po, itemRepo.findAllByPo_PoId(poId));
     }
@@ -479,6 +503,16 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         Warehouse warehouse = po.getWarehouse();
         User buyer = po.getBuyer();
 
+        String pdfUrl = po.getPdfUrl();
+        if (pdfUrl != null && !pdfUrl.startsWith("http")) {
+            try {
+                pdfUrl = storageService.presignGetUrl(pdfUrl);
+                log.info("Generated presigned URL for key {}: {}", po.getPdfUrl(), pdfUrl);
+            } catch (Exception e) {
+                log.error("Failed to generate presigned URL for key: {}", po.getPdfUrl(), e);
+            }
+        }
+
         return new PurchaseOrderResponse(
                 po.getPoId(),
                 supplier != null ? supplier.getSupplierId() : null,
@@ -490,7 +524,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 po.getStatus(),
                 po.getTotalAmount(),
                 po.getCreatedOn(),
-                po.getPdfUrl(),
+                pdfUrl,
                 itemResponses
         );
     }
@@ -506,5 +540,31 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 item.getReceivedQty(),
                 item.getUnitCost()
         );
+    }
+
+    private void generateAndStorePdf(PurchaseOrder po) {
+        try {
+            // 1. Generate PDF
+            File pdfFile = pdfGenerationService.generatePurchaseOrderPdf(po, po.getApprover(), true);
+
+            // 2. Upload to Storage
+            String objectKey = storageService.buildObjectKey(
+                    "invoice",
+                    po.getSupplier().getSupplierId(),
+                    pdfFile.getName()
+            );
+            storageService.uploadFile(objectKey, pdfFile, MediaType.APPLICATION_PDF_VALUE);
+
+            // 3. Update PO with URL (Storing Object Key now)
+            po.setPdfUrl(objectKey);
+
+            // 4. Clean up temp file
+            if (!pdfFile.delete()) {
+                log.warn("Could not delete temporary PDF file: {}", pdfFile.getAbsolutePath());
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to approve and store PO: " + e.getMessage(), e);
+        }
     }
 }

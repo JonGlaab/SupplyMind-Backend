@@ -236,7 +236,11 @@ public class PurchaseOrderController {
             PurchaseOrder po = purchaseOrderRepository.findById(poId)
                     .orElseThrow(() -> new RuntimeException("Purchase Order not found"));
 
-            if (po.getSupplier() == null || po.getSupplier().getContactEmail() == null) {
+            String recipient = (request.getToEmail() != null && !request.getToEmail().isBlank())
+                    ? request.getToEmail()
+                    : po.getSupplier().getContactEmail();
+
+            if (recipient == null) {
                 return ResponseEntity.badRequest().body("Supplier email is missing.");
             }
 
@@ -244,7 +248,7 @@ public class PurchaseOrderController {
 
 
             emailProvider.sendEmail(
-                    po.getSupplier().getContactEmail(),
+                    recipient,
                     request.getSubject(),
                     request.getBody(),
                     pdfAttachment

@@ -33,7 +33,7 @@ public class PdfGenerationService {
     private static final Font FONT_NORMAL = new Font(Font.HELVETICA, 10, Font.NORMAL);
     private static final Font FONT_SMALL = new Font(Font.HELVETICA, 8, Font.ITALIC, Color.GRAY);
 
-    public File generatePurchaseOrderPdf(PurchaseOrder po, boolean signed) throws IOException {
+    public File generatePurchaseOrderPdf(PurchaseOrder po, User approver, boolean signed) throws IOException {
         File tempFile = File.createTempFile("PO-" + po.getPoId() + "-", ".pdf");
 
         try (FileOutputStream fos = new FileOutputStream(tempFile)) {
@@ -45,7 +45,7 @@ public class PdfGenerationService {
             addMetaInfo(document, po);
             addItemsTable(document, po);
             addTotals(document, po);
-            addSignature(document, po, signed);
+            addSignature(document, po, approver, signed);
             addFooter(document);
 
             document.close();
@@ -151,7 +151,7 @@ public class PdfGenerationService {
         doc.add(p);
     }
 
-    private void addSignature(Document doc, PurchaseOrder po, boolean signed) throws DocumentException {
+    private void addSignature(Document doc, PurchaseOrder po, User approver, boolean signed) throws DocumentException {
         doc.add(new Paragraph("\n\n\n"));
 
         PdfPTable table = new PdfPTable(1);
@@ -163,19 +163,19 @@ public class PdfGenerationService {
         cell.setPaddingTop(10);
 
         if (signed) {
-            User buyer = po.getBuyer();
-            String name = (buyer != null) ? buyer.getFirstName() + " " + buyer.getLastName() : "Authorized Manager";
+            User user = (approver != null) ? approver : po.getBuyer();
+            String name = (user != null) ? user.getFirstName() + " " + user.getLastName() : "Authorized Manager";
 
             boolean imageLoaded = false;
-            if (buyer != null && buyer.getSignatureUrl() != null && !buyer.getSignatureUrl().isEmpty()) {
+            if (user != null && user.getSignatureUrl() != null && !user.getSignatureUrl().isEmpty()) {
                 try {
 
-                    Image signatureImg = Image.getInstance(URI.create(buyer.getSignatureUrl()).toURL());
+                    Image signatureImg = Image.getInstance(URI.create(user.getSignatureUrl()).toURL());
                     signatureImg.scaleToFit(150, 60);
                     cell.addElement(signatureImg);
                     imageLoaded = true;
                 } catch (Exception e) {
-                    log.warn("Failed to load signature image: {}", buyer.getSignatureUrl());
+                    log.warn("Failed to load signature image: {}", user.getSignatureUrl());
                 }
             }
 

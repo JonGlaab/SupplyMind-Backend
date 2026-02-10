@@ -4,6 +4,7 @@ import lombok.Data;
 
 @Data
 public class SendPurchaseOrderEmailRequest {
+    private String toEmail;
     private String subject;
     private String body;
     private boolean addSignature;

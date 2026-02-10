@@ -38,6 +38,10 @@ public class PurchaseOrder {
     @JoinColumn(name = "buyer_id")
     private User buyer;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approver_id")
+    private User approver;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PurchaseOrderStatus status;
