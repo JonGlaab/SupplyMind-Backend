@@ -21,10 +21,10 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class EmailAutomationService {
 
-    private final InboxProvider inboxProvider;
+    // ⚠️ Change type to ImapInboxAdapter to access 'copyMessage'
+    private final ImapInboxAdapter inboxProvider;
     private final PurchaseOrderRepository poRepo;
     private final AiStatusScanner aiScanner;
-
 
     private final Pattern PO_PATTERN = Pattern.compile("(?i)PO[-\\s]*#?(\\d+)");
 
@@ -32,75 +32,80 @@ public class EmailAutomationService {
     @Scheduled(fixedDelay = 60000)
     @Transactional
     public void scanAndRouteEmails() {
-        log.debug("🕵️ Starting AI-Assisted Inbox Scan...");
+        log.debug("🕵️ Starting Inbox & Sent Scan...");
 
+        // 1. Scan Supplier Replies (INBOX) -> MOVE to Folder
+        // "true" means this is a MOVE operation (cleans up Inbox)
+        scanFolderAndRoute("INBOX", true);
+
+        // 2. Scan My Sent Emails ([Gmail]/Sent Mail) -> COPY to Folder
+        // "false" means this is a COPY operation (keeps record in Sent)
+        scanFolderAndRoute("[Gmail]/Sent Mail", false);
+    }
+
+    private void scanFolderAndRoute(String sourceFolder, boolean isMoveOperation) {
         try {
-            // 1. Fetch unread messages from main INBOX
-            List<InboxMessage> inboxMessages = inboxProvider.fetchMessages("INBOX");
+            List<InboxMessage> messages = inboxProvider.fetchMessages(sourceFolder);
 
-            for (InboxMessage msg : inboxMessages) {
+            for (InboxMessage msg : messages) {
                 if (msg.getSubject() == null) continue;
 
-                // 2. Exact Regex Match (Safe Routing)
                 Matcher matcher = PO_PATTERN.matcher(msg.getSubject());
                 if (matcher.find()) {
-                    String poIdStr = matcher.group(1);
-                    Long poId = Long.parseLong(poIdStr);
+                    Long poId = Long.parseLong(matcher.group(1));
 
                     poRepo.findById(poId).ifPresent(po -> {
-                        // Security: Ignore emails sent BY us (loopback check)
-                        boolean isFromSupplier = !msg.getFrom().toLowerCase().contains("supplymind");
+                        String targetLabel = "SupplyMind/PO-" + poId;
 
-                        if (isFromSupplier) {
-                            log.info("📧 Analyzing Supplier Reply for PO #{}", poId);
+                        // We only run AI analysis on incoming mail (Supplier Replies)
+                        boolean isSupplierReply = !msg.getFrom().toLowerCase().contains("supplymind");
 
-                            AiStatusScanner.StatusScanResult analysis = aiScanner.scanEmailForStatus(msg.getSnippet());
-
-                            // A. Update Delivery Date (If found)
-                            if (analysis.deliveryDate() != null) {
-                                Instant newDate = analysis.deliveryDate().atStartOfDay(ZoneId.systemDefault()).toInstant();
-                                po.setExpectedDeliveryDate(newDate);
-                                log.info("📅 AI caught delivery date: {}", newDate);
-                            }
-
-                            // B. Update Status (Conservative Mode)
-                            // We only switch if it's currently "Sent" or "Replied".
-                            // We do NOT overwrite final states like PAID or RECEIVED.
-                            if (po.getStatus() == PurchaseOrderStatus.EMAIL_SENT || po.getStatus() == PurchaseOrderStatus.SUPPLIER_REPLIED) {
-                                try {
-                                    String detectedStr = analysis.status();
-                                    // Map AI string to Enum safely
-                                    PurchaseOrderStatus detectedStatus = PurchaseOrderStatus.valueOf(detectedStr);
-
-                                    // Only allow specific "In-Flight" status updates
-                                    if (detectedStatus == PurchaseOrderStatus.DELAY_EXPECTED ||
-                                            detectedStatus == PurchaseOrderStatus.CONFIRMED ||
-                                            detectedStatus == PurchaseOrderStatus.SUPPLIER_REPLIED) {
-
-                                        po.setStatus(detectedStatus);
-                                        log.info("🤖 AI updated status to: {}", detectedStatus);
-                                    }
-                                } catch (Exception ignored) {
-                                    // If AI returns weird text, just mark as Replied
-                                    po.setStatus(PurchaseOrderStatus.SUPPLIER_REPLIED);
-                                }
-                            }
-
-                            // Always bubble up the activity
-                            po.setLastActivityAt(Instant.now());
-                            poRepo.save(po);
+                        // --- LOGIC A: AI ANALYSIS ---
+                        if (isMoveOperation && isSupplierReply) {
+                            handleSupplierReply(po, msg);
                         }
 
-                        // --- ROUTING STEP ---
-                        // Move email from "INBOX" to "SupplyMind/PO-{id}"
-                        // This ensures it appears in the specific PO Chat on the frontend
-                        String targetLabel = "SupplyMind/PO-" + poId;
-                        inboxProvider.moveMessage(msg.getMessageId(), "INBOX", targetLabel);
+                        // --- LOGIC B: ROUTING ---
+                        if (isMoveOperation) {
+                            // Move from Inbox
+                            inboxProvider.moveMessage(msg.getMessageId(), sourceFolder, targetLabel);
+                        } else {
+                            // Copy from Sent
+                            inboxProvider.copyMessage(msg.getMessageId(), sourceFolder, targetLabel);
+                        }
                     });
                 }
             }
         } catch (Exception e) {
-            log.error("Error during automation scan", e);
+            log.error("Error scanning folder: " + sourceFolder, e);
         }
+    }
+
+    private void handleSupplierReply(com.supplymind.platform_core.model.core.PurchaseOrder po, InboxMessage msg) {
+        log.info("📧 Analyzing Supplier Reply for PO #{}", po.getPoId());
+
+        // Ask AI for Status
+        AiStatusScanner.StatusScanResult analysis = aiScanner.scanEmailForStatus(msg.getSnippet());
+
+        // Update Delivery Date
+        if (analysis.deliveryDate() != null) {
+            po.setExpectedDeliveryDate(analysis.deliveryDate().atStartOfDay(ZoneId.systemDefault()).toInstant());
+        }
+
+        // Update Status (Safe Mode)
+        // Only update if current status is "In Flight"
+        if (po.getStatus() == PurchaseOrderStatus.EMAIL_SENT || po.getStatus() == PurchaseOrderStatus.SUPPLIER_REPLIED) {
+            try {
+                PurchaseOrderStatus detected = PurchaseOrderStatus.valueOf(analysis.status());
+                if (detected == PurchaseOrderStatus.DELAY_EXPECTED ||
+                        detected == PurchaseOrderStatus.CONFIRMED ||
+                        detected == PurchaseOrderStatus.SUPPLIER_REPLIED) {
+                    po.setStatus(detected);
+                }
+            } catch (Exception ignored) {}
+        }
+
+        po.setLastActivityAt(Instant.now());
+        poRepo.save(po);
     }
 }

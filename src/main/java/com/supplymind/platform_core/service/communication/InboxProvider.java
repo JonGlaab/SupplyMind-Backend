@@ -18,6 +18,13 @@ public interface InboxProvider {
      * Fetches all attachments from a specific label.
      */
     byte[] fetchAttachment(String labelId, String messageId, String fileName);
+    /**
+     * Moves a message from one label to another.
+     */
     void moveMessage(String messageId, String sourceLabel, String targetLabel);
+    /**
+     * Copies a message from one label to another.
+     */
+    void copyMessage(String messageId, String sourceLabel, String targetLabel);
 
 }

@@ -201,7 +201,7 @@ public class PurchaseOrderController {
     @Transactional(readOnly = true)
     public ResponseEntity<EmailDraftResponse> getEmailDraft(@PathVariable Long poId, Principal principal) {
         try {
-            PurchaseOrder po = purchaseOrderRepository.findById(poId)
+            PurchaseOrder po = purchaseOrderRepository.findByIdWithItems(poId)
                     .orElseThrow(() -> new RuntimeException("Purchase Order not found: " + poId));
 
             // Identify Manager for the AI Signature

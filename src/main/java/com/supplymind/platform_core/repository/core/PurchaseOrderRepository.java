@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 @Repository
 public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Long> {
 
@@ -65,4 +67,9 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
             @Param("warehouseId") Long warehouseId,
             Pageable pageable
     );
+    @Query("SELECT p FROM PurchaseOrder p " +
+            "LEFT JOIN FETCH p.purchaseOrderItems i " +
+            "LEFT JOIN FETCH i.product " +
+            "WHERE p.poId = :id")
+    Optional<PurchaseOrder> findByIdWithItems(@Param("id") Long id);
 }

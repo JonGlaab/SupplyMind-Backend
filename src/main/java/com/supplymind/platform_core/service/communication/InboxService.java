@@ -1,12 +1,13 @@
 package com.supplymind.platform_core.service.communication;
 
 import com.supplymind.platform_core.common.enums.PurchaseOrderStatus;
-import com.supplymind.platform_core.dto.communication.InboxConversation; // Corrected Package
+import com.supplymind.platform_core.dto.communication.InboxConversation;
 import com.supplymind.platform_core.dto.core.purchaseorder.InboxMessage;
 import com.supplymind.platform_core.model.core.PurchaseOrder;
 import com.supplymind.platform_core.repository.core.PurchaseOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -29,6 +30,7 @@ public class InboxService {
      * Fetches the list of active POs to display in the Inbox Sidebar.
      * Uses the new InboxConversation DTO from the 'communication' package.
      */
+    @Transactional(readOnly = true)
     public List<InboxConversation> getConversations() {
         List<PurchaseOrder> allPos = poRepo.findAll();
 
@@ -56,6 +58,7 @@ public class InboxService {
     /**
      * Fetches the actual chat messages (Emails) for a specific PO.
      */
+    @Transactional(readOnly = true)
     public List<InboxMessage> getPoChat(Long poId) {
         PurchaseOrder po = poRepo.findById(poId).orElse(null);
         if (po == null) return new ArrayList<>();

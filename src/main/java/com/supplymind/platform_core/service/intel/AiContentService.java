@@ -40,8 +40,10 @@ public class  AiContentService {
     public String generatePurchaseOrderEmail(PurchaseOrder po, String managerName, String supplierName) {
 
         String itemsSummary = po.getPurchaseOrderItems().stream()
-                .limit(10) // Limit to 10 items in prompt to save tokens (PDF has full list)
-                .map(item -> "- " + item.getProduct().getName() + " (Qty: " + item.getOrderedQty() + ")")
+                .map(item -> {
+                    String name = (item.getProduct() != null) ? item.getProduct().getName() : "Unknown Item";
+                    return "- " + name + ": " + item.getOrderedQty() + " units";
+                })
                 .collect(Collectors.joining("\n"));
 
         String prompt = """
