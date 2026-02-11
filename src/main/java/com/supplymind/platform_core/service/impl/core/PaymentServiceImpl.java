@@ -80,6 +80,22 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
+    public PaymentDTO getPayment(Long paymentId) {
+        Payment p = paymentRepo.findById(paymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
+
+        return new PaymentDTO(
+                p.getId(),
+                p.getStatus(),
+                p.getAmount(),
+                p.getRefundedAmount(),
+                p.getCurrency(),
+                p.getPaymentType()
+        );
+    }
+
+
+    @Override
     @Transactional
     public void requestRefund(CreateRefundRequestDTO dto) {
         Payment p = paymentRepo.findById(dto.getPaymentId())
