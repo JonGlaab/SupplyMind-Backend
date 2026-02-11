@@ -471,9 +471,10 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 .map(this::toItemResponse)
                 .toList();
 
-            Supplier supplier = po.getSupplier();
+        Supplier supplier = po.getSupplier();
         Warehouse warehouse = po.getWarehouse();
         User buyer = po.getBuyer();
+        User approver = po.getApprover();
 
         String pdfUrl = po.getPdfUrl();
         if (pdfUrl != null && !pdfUrl.startsWith("http")) {
@@ -489,10 +490,12 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 po.getPoId(),
                 supplier != null ? supplier.getSupplierId() : null,
                 supplier != null ? supplier.getName() : null,
+                supplier != null ? supplier.getContactEmail() : null,
                 warehouse != null ? warehouse.getWarehouseId() : null,
                 warehouse != null ? warehouse.getLocationName() : null,
                 buyer != null ? buyer.getId() : null,
                 buyer != null ? buyer.getEmail() : null,
+                approver != null ? approver.getEmail() : null,
                 po.getStatus(),
                 po.getTotalAmount(),
                 po.getCreatedOn(),

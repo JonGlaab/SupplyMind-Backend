@@ -1,2 +1,0 @@
-INSERT INTO defaultdb.purchase_orders (po_id, supplier_id, warehouse_id, buyer_id, status, total_amount, created_on, last_activity_at, expected_delivery_date) VALUES (1, 1, 1, 5, 'PENDING_APPROVAL', 2499.50, '2026-01-30 21:44:51', null, null);
-INSERT INTO defaultdb.purchase_orders (po_id, supplier_id, warehouse_id, buyer_id, status, total_amount, created_on, last_activity_at, expected_delivery_date) VALUES (105, 3, 1, 5, 'APPROVED', 4699.85, '2026-02-04 21:08:01', null, null);

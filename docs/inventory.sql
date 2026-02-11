@@ -1,6 +1,0 @@
-INSERT INTO defaultdb.inventory (inventory_id, warehouse_id, product_id, qty_on_hand, created_at, updated_at, max_stock_level, min_stock_level) VALUES (1, 1, 1, 45, '2026-02-03 01:27:03', '2026-02-05 00:28:00', 100, 10);
-INSERT INTO defaultdb.inventory (inventory_id, warehouse_id, product_id, qty_on_hand, created_at, updated_at, max_stock_level, min_stock_level) VALUES (2, 1, 2, 100, '2026-02-03 01:27:03', '2026-02-05 00:28:00', 100, 10);
-INSERT INTO defaultdb.inventory (inventory_id, warehouse_id, product_id, qty_on_hand, created_at, updated_at, max_stock_level, min_stock_level) VALUES (3, 1, 3, 8, '2026-02-03 01:27:03', '2026-02-05 00:28:00', 100, 10);
-INSERT INTO defaultdb.inventory (inventory_id, warehouse_id, product_id, qty_on_hand, created_at, updated_at, max_stock_level, min_stock_level) VALUES (4, 1, 4, 50, '2026-02-03 01:27:03', '2026-02-05 00:27:59', 100, 10);
-INSERT INTO defaultdb.inventory (inventory_id, warehouse_id, product_id, qty_on_hand, created_at, updated_at, max_stock_level, min_stock_level) VALUES (5, 1, 5, 20, '2026-02-03 01:27:03', '2026-02-05 00:27:59', 100, 10);
-INSERT INTO defaultdb.inventory (inventory_id, warehouse_id, product_id, qty_on_hand, created_at, updated_at, max_stock_level, min_stock_level) VALUES (6, 1, 7, 45, '2026-02-04 20:23:05', '2026-02-04 23:59:04', 500, 50);

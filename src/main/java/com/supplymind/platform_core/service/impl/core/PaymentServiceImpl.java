@@ -37,28 +37,37 @@ public class PaymentServiceImpl implements PaymentService {
         PurchaseOrder po = poRepo.findById(dto.getPoId())
                 .orElseThrow(() -> new IllegalArgumentException("PO not found: " + dto.getPoId()));
 
-        if (dto.getAmount() == null || dto.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("amount must be > 0");
-        }
         if (dto.getPaymentType() == null || dto.getPaymentType().isBlank()) {
             throw new IllegalArgumentException("paymentType is required");
         }
 
+        // ✅ Use PO total as the source of truth (frontend doesn't send amount)
+        BigDecimal amount = po.getTotalAmount();
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("PO totalAmount must be > 0");
+        }
+
+        // ✅ Normalize currency and prefer dto if provided
+        String cur = (dto.getCurrency() == null || dto.getCurrency().isBlank())
+                ? currency
+                : dto.getCurrency();
+        cur = cur.toLowerCase();
+
         Payment p = new Payment();
         p.setPo(po);
-        p.setAmount(dto.getAmount());
+        p.setAmount(amount);
         p.setStatus("PENDING");
         p.setPaymentType(dto.getPaymentType());
-        p.setCurrency(currency);
+        p.setCurrency(cur);
         p.setRefundedAmount(BigDecimal.ZERO);
         p = paymentRepo.save(p);
 
-        long amountCents = dto.getAmount().movePointRight(2).longValueExact();
+        long amountCents = amount.movePointRight(2).longValueExact();
 
         try {
             PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
                     .setAmount(amountCents)
-                    .setCurrency(currency)
+                    .setCurrency(cur)
                     .putMetadata("poId", String.valueOf(po.getPoId()))
                     .putMetadata("paymentId", String.valueOf(p.getId()))
                     .build();
@@ -69,7 +78,6 @@ public class PaymentServiceImpl implements PaymentService {
 
             PaymentIntent pi = PaymentIntent.create(params, opts);
 
-            // store PaymentIntent id (pi_...) in stripe_id
             p.setStripeId(pi.getId());
             paymentRepo.save(p);
 
@@ -78,6 +86,23 @@ public class PaymentServiceImpl implements PaymentService {
             throw new RuntimeException("Stripe error creating PaymentIntent: " + e.getMessage(), e);
         }
     }
+
+
+    @Override
+    public PaymentDTO getPayment(Long paymentId) {
+        Payment p = paymentRepo.findById(paymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
+
+        return new PaymentDTO(
+                p.getId(),
+                p.getStatus(),
+                p.getAmount(),
+                p.getRefundedAmount(),
+                p.getCurrency(),
+                p.getPaymentType()
+        );
+    }
+
 
     @Override
     @Transactional

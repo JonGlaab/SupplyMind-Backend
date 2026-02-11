@@ -21,4 +21,10 @@ public class PaymentController {
     public void refund(@RequestBody CreateRefundRequestDTO dto) {
         paymentService.requestRefund(dto);
     }
+
+    @GetMapping("/{paymentId}")
+    public PaymentDTO getPayment(@PathVariable Long paymentId) {
+        return paymentService.getPayment(paymentId);
+    }
+
 }

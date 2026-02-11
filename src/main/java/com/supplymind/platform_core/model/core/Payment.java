@@ -7,12 +7,15 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
 @Entity
 @Table(name = "payments", indexes = {
-        @Index(name = "po_id", columnList = "po_id")
+        @Index(name = "idx_payments_po_id", columnList = "po_id"),
+        @Index(name = "idx_payments_stripe_id", columnList = "stripe_id")
 })
 public class Payment {
 
@@ -25,25 +28,33 @@ public class Payment {
     @JoinColumn(name = "po_id")
     private PurchaseOrder po;
 
+    // Store Stripe PaymentIntent id here: pi_...
     @Size(max = 255)
-    @Column(name = "stripe_id")
-    private String stripeId; // we will store PaymentIntent id here: pi_...
+    @Column(name = "stripe_id", length = 255)
+    private String stripeId;
 
-    @Column(name = "amount", precision = 15, scale = 2)
-    private BigDecimal amount;
+    @Column(name = "amount", nullable = false, precision = 15, scale = 2)
+    private BigDecimal amount = BigDecimal.ZERO;
 
-    @Column(name = "status")
-    private String status; // PENDING, PAID, FAILED, PARTIALLY_REFUNDED, REFUNDED
+    // PENDING, PAID, FAILED, PARTIALLY_REFUNDED, REFUNDED
+    @Column(name = "status", nullable = false, length = 50)
+    private String status = "PENDING";
 
     @Column(name = "paid_at")
     private Instant paidAt;
 
     @Column(name = "payment_type", nullable = false, length = 20)
-    private String paymentType;
+    private String paymentType; // CARD, etc.
 
-    @Column(name = "refunded_amount", precision = 15, scale = 2)
+    // Running total of refunded money (fast UI)
+    @Column(name = "refunded_amount", nullable = false, precision = 15, scale = 2)
     private BigDecimal refundedAmount = BigDecimal.ZERO;
 
-    @Column(name = "currency", length = 10)
+    // Keep it lowercase: "cad"
+    @Column(name = "currency", nullable = false, length = 10)
     private String currency = "cad";
+
+    // Refund history (multiple partial refunds)
+    @OneToMany(mappedBy = "payment", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<PaymentRefund> refunds = new ArrayList<>();
 }
