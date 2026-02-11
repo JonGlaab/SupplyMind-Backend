@@ -19,7 +19,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/returns")
+@RequestMapping("/api/core/returns")
 public class ReturnController {
 
     private final ReturnService returnService;

@@ -42,16 +42,26 @@ public class SecurityConfig {
                         // WebSocket endpoints (keep as-is unless you secure WS separately)
                         .requestMatchers("/ws/**", "/ws-auth/**").permitAll()
 
-                        // Role-based access
+                        // ADMIN
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-                        // Managers + Admin
+                        // STAFF / ALL
                         .requestMatchers(
-                                "/api/procurement/**",
                                 "/api/core/**",
-                                "/api/storage/**",
-                                "/api/intel/**"
-                        ).hasAnyRole("ADMIN", "MANAGER")
+                                "/api/storage/**").authenticated()
+
+                        // PO --  looks like PO controllers are all in core. I don't want to re-route them now but it could be clean up TODO
+                        //.requestMatchers(
+                        //        "/api/procurement/**")
+                        //.hasAnyRole("PROCUREMENT_OFFICER", "MANAGER")
+
+                        // MANAGER ONLY
+                        .requestMatchers(
+                                "/api/intel/**").hasRole("MANAGER")
+
+                        // the only one we need to trash after testing / developing TODO
+                        .requestMatchers(
+                                "/api/**").hasRole("ADMIN")
 
                         // Webhooks are typically called by Stripe/3rd parties, so keep public
                         .requestMatchers("/api/webhooks/**").permitAll()
@@ -70,7 +80,6 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Merged origins from both upstream and local stashes
         configuration.setAllowedOriginPatterns(Arrays.asList(
                 "http://localhost:5173",
                 "https://localhost:5173",
