@@ -285,3 +285,88 @@ Elizabeth
     What will I do today? Debug email process for PO's. Connect email vie to the 'inbox' button in
     the navigation tab.
     What impediments are blocking me?
+
+2026-02-11
+  Minh
+    What did I do yesterday? Testing the front end. Logic for mobile app or implementation for
+    notifications.
+    What will I do today? Testing and fixing.
+    What impediments are blocking me?
+
+  Fatemeh
+    What did I do yesterday? Update role based security config. Stripe front end.
+    What will I do today? Research other functionalities with stripe. Tips?
+    What impediments are blocking me?
+
+  Jonathan
+    What did I do yesterday? Staff dashboard.
+    What will I do today? Receiving and return requests.
+    What impediments are blocking me?
+
+  Elizabeth
+    What did I do yesterday? Debug email process for PO's.
+    What will I do today? Signature upload and connect to the checkbox.
+    What impediments are blocking me?
+
+2026-02-12
+  Minh
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Fatemeh
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Jonathan
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Elizabeth
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+2026-02-13
+  Minh
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Fatemeh
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Jonathan
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Elizabeth
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+2026-02-14
+  Minh
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Fatemeh
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Jonathan
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
+
+  Elizabeth
+    What did I do yesterday?
+    What will I do today?
+    What impediments are blocking me?
