@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 @Data
 public class CreatePaymentIntentRequestDTO {
     private Long poId;
-    private BigDecimal amount;     // CAD dollars
+    private String currency;       // optional: "cad"    // CAD dollars
     private String paymentType;    // CARD / BANK_TRANSFER (your field)
 }
 
