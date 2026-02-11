@@ -110,9 +110,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         return new PageImpl<>(dtoList, pageable, page.getTotalElements());
     }
 
-
-
-
     // ----------------------------
     // GET DETAILS
     // ----------------------------
@@ -213,9 +210,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         return toItemResponse(saved);
     }
 
-    // ----------------------------
-    // REMOVE ITEM (DRAFT ONLY)
-    // ----------------------------
     @Override
     @Transactional
     public void removeItem(Long poId, Long itemId) {
@@ -229,9 +223,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         recalcTotal(po, items);
     }
 
-    // ----------------------------
-    // SUBMIT (DRAFT -> SUBMITTED)
-    // ----------------------------
     @Override
     @Transactional
     public PurchaseOrderResponse submit(Long poId) {
@@ -247,9 +238,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         return toResponse(po, items);
     }
 
-    // ----------------------------
-    // APPROVE (SUBMITTED -> APPROVED)
-    // ----------------------------
     @Override
     @Transactional
     public PurchaseOrderResponse approve(Long poId) {
@@ -272,9 +260,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         return toResponse(po, items);
     }
 
-    // ----------------------------
-    // CANCEL (not RECEIVED)
-    // ----------------------------
     @Override
     @Transactional
     public PurchaseOrderResponse cancel(Long poId) {
@@ -290,28 +275,25 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         return toResponse(po, items);
     }
 
-
-    // ----------------------------
-    // RECEIVE (APPROVED -> RECEIVED, or SUBMITTED -> RECEIVED if you want)
-    // Updates inventory + writes InventoryTransaction (IN)
-    // ----------------------------
     @Override
     @Transactional
     public PurchaseOrderResponse receive(Long poId, ReceivePurchaseOrderRequest req) {
+
+        try {
         PurchaseOrder po = requirePo(poId);
 
-        if (!(po.getStatus() == PurchaseOrderStatus.APPROVED || po.getStatus() == PurchaseOrderStatus.PENDING_APPROVAL)) {
-            throw new BadRequestException("PO must be APPROVED (or PENDING_APPROVAL) to receive.");
+        if (po.getStatus() != PurchaseOrderStatus.DELIVERED) {
+            throw new BadRequestException("PO must be in DELIVERED status to process incoming stock.");
         }
 
         Map<Long, Integer> receiveMap = req.lines().stream()
-                .collect(Collectors.toMap(ReceivePurchaseOrderRequest.ReceiveLine::poItemId,
+                .collect(Collectors.toMap(
+                        ReceivePurchaseOrderRequest.ReceiveLine::poItemId,
                         ReceivePurchaseOrderRequest.ReceiveLine::receiveQty,
                         Integer::sum));
 
         List<PurchaseOrderItem> items = itemRepo.findAllByPo_PoId(poId);
 
-        // Validate line ids belong to this PO + validate remaining qty
         for (PurchaseOrderItem item : items) {
             Integer receiveQty = receiveMap.get(item.getPoItemId());
             if (receiveQty == null) continue;
@@ -326,7 +308,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             }
         }
 
-        // Apply receiving: update item received_qty, update inventory, write tx
         for (PurchaseOrderItem item : items) {
             Integer receiveQty = receiveMap.get(item.getPoItemId());
             if (receiveQty == null) continue;
@@ -335,7 +316,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             item.setReceivedQty(newReceived);
             itemRepo.save(item);
 
-            // Update inventory row for (warehouse, product)
             Long warehouseId = po.getWarehouse().getWarehouseId();
             Long productId = item.getProduct().getProductId();
 
@@ -350,7 +330,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             inv.setQtyOnHand(current + receiveQty);
             inventoryRepo.save(inv);
 
-            // Write transaction
             InventoryTransaction tx = InventoryTransaction.builder()
                     .warehouse(po.getWarehouse())
                     .product(item.getProduct())
@@ -360,7 +339,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             txRepo.save(tx);
         }
 
-        // If fully received, mark PO RECEIVED
         boolean fullyReceived = items.stream().allMatch(i -> {
             int ordered = i.getOrderedQty() == null ? 0 : i.getOrderedQty();
             int rec = i.getReceivedQty() == null ? 0 : i.getReceivedQty();
@@ -368,13 +346,17 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         });
 
         if (fullyReceived) {
-            po.setStatus(PurchaseOrderStatus.DELIVERED);
+            po.setStatus(PurchaseOrderStatus.COMPLETED);
         }
 
         recalcTotal(po, items);
         return toResponse(po, items);
+        }
+        catch (Exception e) {
+            System.err.println("!!! RECEIVE ERROR !!!: " + e.getMessage());
+            throw e;
+        }
     }
-
 
     @Override
     @Transactional
@@ -384,12 +366,10 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         PurchaseOrderStatus current = po.getStatus();
         PurchaseOrderStatus next = req.status();
 
-        // Can't change once terminal
         if (current == PurchaseOrderStatus.COMPLETED || current == PurchaseOrderStatus.CANCELLED) {
             throw new BadRequestException("Cannot change status for a " + current + " PO.");
         }
 
-        // ✅ Allow DELAY_EXPECTED as a flag after CONFIRMED/SHIPPED (real life)
         if (next == PurchaseOrderStatus.DELAY_EXPECTED) {
             if (!(current == PurchaseOrderStatus.CONFIRMED || current == PurchaseOrderStatus.SHIPPED)) {
                 throw new BadRequestException("DELAY_EXPECTED can only be set after CONFIRMED or SHIPPED.");
@@ -398,7 +378,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             return toResponse(po, itemRepo.findAllByPo_PoId(poId));
         }
 
-        // ✅ Normal progression rules
         boolean ok = switch (current) {
             case DRAFT -> next == PurchaseOrderStatus.PENDING_APPROVAL; // use /submit normally
             case PENDING_APPROVAL -> next == PurchaseOrderStatus.APPROVED; // use /approve normally
@@ -407,7 +386,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             case SUPPLIER_REPLIED -> next == PurchaseOrderStatus.CONFIRMED;
             case CONFIRMED -> next == PurchaseOrderStatus.SHIPPED;
             case SHIPPED -> next == PurchaseOrderStatus.DELIVERED;
-            case DELIVERED -> next == PurchaseOrderStatus.COMPLETED; // usually done by /receive
+            case DELIVERED -> next == PurchaseOrderStatus.COMPLETED;
             case DELAY_EXPECTED -> next == PurchaseOrderStatus.SHIPPED || next == PurchaseOrderStatus.DELIVERED;
             default -> false;
         };
@@ -428,10 +407,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         return toResponse(po, itemRepo.findAllByPo_PoId(poId));
     }
 
-
-    // ----------------------------
-    // RECEIVING STATUS
-    // ----------------------------
     @Override
     @Transactional(readOnly = true)
     public ReceivingStatusResponse receivingStatus(Long poId) {
@@ -457,9 +432,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         return new ReceivingStatusResponse(po.getPoId(), lines);
     }
 
-    // ----------------------------
-    // Helpers
-    // ----------------------------
     private PurchaseOrder requirePo(Long poId) {
         return poRepo.findById(poId)
                 .orElseThrow(() -> new NotFoundException("Purchase Order not found: " + poId));
