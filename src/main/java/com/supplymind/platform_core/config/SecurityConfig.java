@@ -34,23 +34,31 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/error").permitAll()
+
+                        // Auth endpoints stay public
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/intel/**").permitAll() //For testing demand API only, TODO: change after depends on role
-                        .requestMatchers("/ws/**", "/ws-auth/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
+
+                        // WebSocket endpoints (keep as-is unless you secure WS separately)
+                        .requestMatchers("/ws/**", "/ws-auth/**").permitAll()
+
+                        // Role-based access
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/procurement/**").permitAll() //For testing sending email API only, TODO: change after depends on role
 
-                        .requestMatchers("/api/core/**").permitAll() //For testing only, TODO: change after depends on role
+                        // Managers + Admin
+                        .requestMatchers(
+                                "/api/procurement/**",
+                                "/api/core/**",
+                                "/api/storage/**",
+                                "/api/intel/**"
+                        ).hasAnyRole("ADMIN", "MANAGER")
 
-                        .requestMatchers("/api/storage/**").permitAll()
-
+                        // Webhooks are typically called by Stripe/3rd parties, so keep public
                         .requestMatchers("/api/webhooks/**").permitAll()
 
-                        //this one should be on bottom of the list so other api can run first
-                        .requestMatchers("/api/**").hasAnyRole("ADMIN", "MANAGER") //For testing
-                        // view only.
-                        // TODO: remove after depends on role
+                        // this one should be on bottom of the list so other api can run first
+                        .requestMatchers("/api/**").hasAnyRole("ADMIN", "MANAGER")
+
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
