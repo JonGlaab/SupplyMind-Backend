@@ -10,6 +10,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 import java.util.Optional;
@@ -32,15 +33,15 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         String token = jwtService.generateToken(user);
-        boolean needsChange = "123456".equals(rawPassword);
 
         return Map.of(
                 "token", token,
                 "role", user.getRole().name(),
-                "needsPasswordChange", needsChange
+                "needsPasswordChange", user.getNeedsPasswordChange()
         );
     }
 
+    @Transactional
     public void changePassword(String email, String newPassword) {
         if ("123456".equals(newPassword)) {
             throw new IllegalArgumentException("Cannot use default password.");
