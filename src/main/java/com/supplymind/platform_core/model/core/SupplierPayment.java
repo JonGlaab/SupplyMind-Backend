@@ -66,4 +66,8 @@ public class SupplierPayment {
 
     @Column(name = "completed_at")
     private Instant completedAt;
+
+    @Column(name = "executed_at")
+    private Instant executedAt;
+
 }

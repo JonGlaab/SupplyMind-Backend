@@ -20,6 +20,13 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
+
+import com.stripe.exception.StripeException;
+import com.stripe.model.PaymentIntent;
+import com.stripe.net.RequestOptions;
+import com.stripe.param.PaymentIntentCreateParams;
+
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +35,8 @@ public class FinanceServiceImpl implements FinanceService {
     private final SupplierInvoiceRepository invoiceRepo;
     private final SupplierPaymentRepository supplierPaymentRepo;
     private final PurchaseOrderRepository poRepo;
+    private final SupplierInvoiceRepository supplierInvoiceRepo;
+
 
     @Value("${stripe.currency:cad}")
     private String defaultCurrency;
@@ -82,6 +91,19 @@ public class FinanceServiceImpl implements FinanceService {
         );
     }
 
+    public List<PurchaseOrder> getReadyPos() {
+        return poRepo.findAllReadyForFinance(
+                List.of(
+                        PurchaseOrderStatus.DELIVERED,
+                        PurchaseOrderStatus.COMPLETED
+                )
+        );
+    }
+
+    public SupplierInvoice getInvoiceByPoId(Long poId) {
+        return invoiceRepo.findByPo_PoId(poId).orElse(null);
+    }
+
     @Override
     @Transactional
     public void approveInvoice(Long invoiceId) {
@@ -96,6 +118,96 @@ public class FinanceServiceImpl implements FinanceService {
         inv.setApprovedAt(Instant.now());
         invoiceRepo.save(inv);
     }
+
+    @Override
+    @Transactional
+    public void executePayment(Long supplierPaymentId) {
+
+        SupplierPayment sp = supplierPaymentRepo.findById(supplierPaymentId)
+                .orElseThrow(() -> new IllegalArgumentException("SupplierPayment not found"));
+
+        if (!"SCHEDULED".equals(sp.getStatus())) {
+            throw new IllegalStateException("Payment must be SCHEDULED");
+        }
+
+        SupplierInvoice invoice = sp.getInvoice();
+        PurchaseOrder po = invoice.getPo();
+
+        BigDecimal amount = sp.getAmount();
+
+        long amountCents = amount.movePointRight(2).longValueExact();
+
+        try {
+
+            PaymentIntentCreateParams params =
+                    PaymentIntentCreateParams.builder()
+                            .setAmount(amountCents)
+                            .setCurrency("cad")
+                            .putMetadata("supplierPaymentId", String.valueOf(sp.getSupplierPaymentId()))
+                            .putMetadata("invoiceId", String.valueOf(invoice.getInvoiceId()))
+                            .putMetadata("poId", String.valueOf(po.getPoId()))
+                            .build();
+
+            RequestOptions opts = RequestOptions.builder()
+                    .setIdempotencyKey("exec_pay_" + sp.getSupplierPaymentId())
+                    .build();
+
+            PaymentIntent pi = PaymentIntent.create(params, opts);
+
+            // mark executed
+            sp.setStatus(SupplierPaymentStatus.PAID);
+
+            sp.setExecutedAt(Instant.now());
+
+            supplierPaymentRepo.save(sp);
+
+            // update invoice paid amount
+            BigDecimal paid = invoice.getPaidAmount().add(amount);
+            invoice.setPaidAmount(paid);
+
+            if (paid.compareTo(invoice.getTotalAmount()) >= 0) {
+                invoice.setStatus(SupplierInvoiceStatus.PAID);
+            } else {
+                invoice.setStatus(SupplierInvoiceStatus.PARTIALLY_PAID);
+            }
+
+            supplierInvoiceRepo.save(invoice);
+
+        } catch (StripeException e) {
+            throw new RuntimeException("Stripe execution failed: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public List<SupplierPayment> getPaymentsByInvoice(Long invoiceId) {
+        return supplierPaymentRepo.findByInvoice_InvoiceIdOrderBySupplierPaymentIdDesc(invoiceId);
+    }
+
+    @Override
+    public List<SupplierPaymentTimelineItemDTO> getSupplierPaymentTimeline(Long supplierId) {
+        return supplierPaymentRepo.findBySupplier_SupplierIdOrderByCreatedAtDesc(supplierId)
+                .stream()
+                .map(sp -> SupplierPaymentTimelineItemDTO.builder()
+                        .supplierPaymentId(sp.getSupplierPaymentId())
+                        .supplierId(sp.getSupplier().getSupplierId())
+                        .poId(sp.getPo().getPoId())
+                        .invoiceId(sp.getInvoice().getInvoiceId())
+                        .status(sp.getStatus())
+                        .amount(sp.getAmount())
+                        .currency(sp.getCurrency())
+                        .createdAt(sp.getCreatedAt())
+                        .scheduledFor(sp.getScheduledFor())
+                        .executedAt(sp.getExecutedAt())
+                        .completedAt(sp.getCompletedAt())
+                        .stripePaymentIntentId(sp.getStripePaymentIntentId())
+                        .retryCount(sp.getRetryCount())
+                        .failureReason(sp.getFailureReason())
+                        .build())
+                .toList();
+    }
+
+
+
 
     @Override
     @Transactional

@@ -17,4 +17,7 @@ public interface SupplierPaymentRepository extends JpaRepository<SupplierPayment
     Optional<SupplierPayment> findByStripePaymentIntentId(String stripePaymentIntentId);
 
     List<SupplierPayment> findByInvoice_InvoiceId(Long invoiceId);
+
+    List<SupplierPayment> findByInvoice_InvoiceIdOrderBySupplierPaymentIdDesc(Long invoiceId);
+    List<SupplierPayment> findBySupplier_SupplierIdOrderByCreatedAtDesc(Long supplierId);
 }

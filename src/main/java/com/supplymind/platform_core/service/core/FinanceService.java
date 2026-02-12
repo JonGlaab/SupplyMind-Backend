@@ -1,6 +1,11 @@
 package com.supplymind.platform_core.service.core;
 
 import com.supplymind.platform_core.dto.core.finance.*;
+import com.supplymind.platform_core.model.core.PurchaseOrder;
+import com.supplymind.platform_core.model.core.SupplierInvoice;
+import com.supplymind.platform_core.model.core.SupplierPayment;
+
+import java.util.List;
 
 public interface FinanceService {
 
@@ -11,4 +16,16 @@ public interface FinanceService {
     Long scheduleSupplierPayment(ScheduleSupplierPaymentRequestDTO dto);
 
     SupplierFinanceSummaryDTO getSupplierSummary(Long supplierId);
+
+    SupplierInvoice getInvoiceByPoId(Long poId);
+    List<PurchaseOrder> getReadyPos();
+
+    void executePayment(Long supplierPaymentId);
+
+    List<SupplierPayment> getPaymentsByInvoice(Long invoiceId);
+
+    List<SupplierPaymentTimelineItemDTO> getSupplierPaymentTimeline(Long supplierId);
+
+
+
 }
