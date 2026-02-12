@@ -310,24 +310,24 @@ Elizabeth
 
 2026-02-12
   Minh
-    What did I do yesterday?
-    What will I do today?
-    What impediments are blocking me?
+    What did I do yesterday? testing and fixing / dropdown stuck open
+    What will I do today? more testing and streamlining
+    What impediments are blocking me? sql query issues
 
   Fatemeh
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? researching stripe for advanced features
+    What will I do today? finished integrating stripe and testing
     What impediments are blocking me?
 
   Jonathan
-    What did I do yesterday?
-    What will I do today?
-    What impediments are blocking me?
+    What did I do yesterday? return request
+    What will I do today? finish return request flow and manager side
+    What impediments are blocking me? once again, can't log in / bugs
 
   Elizabeth
-    What did I do yesterday?
-    What will I do today?
-    What impediments are blocking me?
+    What did I do yesterday? worked on pdf uploads / fixing receiving
+    What will I do today? troubleshoot storage, continue with receiving
+    What impediments are blocking me? blob storage issues
 
 2026-02-13
   Minh

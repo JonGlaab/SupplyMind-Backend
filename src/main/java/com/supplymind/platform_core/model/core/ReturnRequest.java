@@ -1,5 +1,6 @@
 package com.supplymind.platform_core.model.core;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.supplymind.platform_core.common.enums.ReturnStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -23,6 +24,7 @@ public class ReturnRequest {
     @Column(name = "return_id", nullable = false)
     private Long id;
 
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "items", "buyer"})
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "po_id", nullable = false)
     private PurchaseOrder po;

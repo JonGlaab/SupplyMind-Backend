@@ -22,3 +22,11 @@ public interface ReturnLineItemRepository extends JpaRepository<ReturnLineItem, 
             @Param("countStatuses") Set<ReturnStatus> countStatuses
     );
 }
+
+//@Query("SELECT COALESCE(SUM(li.qtyApproved), 0) FROM ReturnLineItem li " +
+//        "WHERE li.poItem.poItemId = :poItemId " +
+//        "AND li.returnRequest.status IN :countStatuses")
+//Integer sumApprovedQtyByPoItemAndStatuses(
+//        @Param("poItemId") Long poItemId,
+//        @Param("countStatuses") Set<ReturnStatus> countStatuses
+//);

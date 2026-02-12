@@ -16,6 +16,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -31,8 +32,12 @@ public class ReturnController {
     }
 
     @PostMapping
-    public ReturnRequest create(@RequestBody CreateReturnRequestDTO dto) {
-        return returnService.createReturn(dto);
+    public Map<String, Object> create(@RequestBody CreateReturnRequestDTO dto) {
+        ReturnRequest savedReturn = returnService.createReturn(dto);
+        return Map.of(
+                "status", "success",
+                "returnId", savedReturn.getId()
+        );
     }
 
     @PostMapping("/{returnId}/approve")
