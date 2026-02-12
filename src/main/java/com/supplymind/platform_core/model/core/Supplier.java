@@ -1,6 +1,7 @@
 package com.supplymind.platform_core.model.core;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.supplymind.platform_core.common.enums.SupplierConnectStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -45,6 +46,14 @@ public class Supplier {
 
     @Column(name = "address")
     private String address;
+
+    @Column(name = "stripe_connected_account_id")
+    private String stripeConnectedAccountId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "connect_status", nullable = false)
+    @Builder.Default
+    private SupplierConnectStatus connectStatus = SupplierConnectStatus.NOT_STARTED;
 
     // ---------- Soft delete ----------
     @Column(name = "is_deleted", nullable = false)

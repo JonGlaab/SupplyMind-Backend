@@ -1,14 +1,17 @@
 package com.supplymind.platform_core.controller.common;
 
 import com.stripe.exception.SignatureVerificationException;
+import com.stripe.model.Account;
 import com.stripe.model.Charge;
 import com.stripe.model.Event;
 import com.stripe.model.PaymentIntent;
 import com.stripe.net.Webhook;
+import com.supplymind.platform_core.common.enums.SupplierConnectStatus;
 import com.supplymind.platform_core.model.core.Payment;
 import com.supplymind.platform_core.repository.core.PaymentRepository;
 import com.supplymind.platform_core.repository.core.SupplierInvoiceRepository;
 import com.supplymind.platform_core.repository.core.SupplierPaymentRepository;
+import com.supplymind.platform_core.repository.core.SupplierRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,6 +29,8 @@ public class StripeWebhookController {
     private String webhookSecret;
 
     private final PaymentRepository paymentRepo;
+    private final SupplierRepository supplierRepo;
+
 
     private final SupplierPaymentRepository supplierPaymentRepo;
     private final SupplierInvoiceRepository supplierInvoiceRepo;
@@ -69,6 +74,29 @@ public class StripeWebhookController {
                     });
                 }
             }
+
+            case "account.updated" -> {
+                Account account = (Account) event.getDataObjectDeserializer()
+                        .getObject().orElse(null);
+
+                if (account != null) {
+                    supplierRepo.findAll().stream()
+                            .filter(s -> account.getId().equals(s.getStripeConnectedAccountId()))
+                            .findFirst()
+                            .ifPresent(s -> {
+                                boolean payoutsEnabled = Boolean.TRUE.equals(account.getPayoutsEnabled());
+                                boolean detailsSubmitted = Boolean.TRUE.equals(account.getDetailsSubmitted());
+
+                                if (payoutsEnabled && detailsSubmitted) {
+                                    s.setConnectStatus(SupplierConnectStatus.ENABLED);
+                                } else {
+                                    s.setConnectStatus(SupplierConnectStatus.PENDING);
+                                }
+                                supplierRepo.save(s);
+                            });
+                }
+            }
+
 
             // This event updates both partial and full refunds reliably
             case "charge.refunded" -> {
