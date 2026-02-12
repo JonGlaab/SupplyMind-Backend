@@ -39,7 +39,6 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
 
                         // Auth endpoints stay public
-                        .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
 
                         // ADMIN
@@ -63,9 +62,6 @@ public class SecurityConfig {
 
                         // Webhooks are typically called by Stripe/3rd parties, so keep public
                         .requestMatchers("/api/webhooks/**").permitAll()
-
-                        // this one should be on bottom of the list so other api can run first
-                        .requestMatchers("/api/**").hasAnyRole("ADMIN", "MANAGER")
 
                         .anyRequest().authenticated()
                 )
