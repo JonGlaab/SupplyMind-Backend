@@ -35,12 +35,12 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/error").permitAll()
 
+                        .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
+
                         // Auth endpoints stay public
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
-
-                        // WebSocket endpoints (keep as-is unless you secure WS separately)
-                        .requestMatchers("/ws/**", "/ws-auth/**").permitAll()
 
                         // ADMIN
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
@@ -50,7 +50,9 @@ public class SecurityConfig {
                                 "/api/core/**",
                                 "/api/storage/**").authenticated()
 
-                        // PO --  looks like PO controllers are all in core. I don't want to re-route them now but it could be clean up TODO
+                        // PO --  looks like PO controllers are all in core.
+                        // I don't want to re-route them now but it could be cleaned up
+                        // or we specify which paths exactly can be used TODO
                         //.requestMatchers(
                         //        "/api/procurement/**")
                         //.hasAnyRole("PROCUREMENT_OFFICER", "MANAGER")
@@ -58,10 +60,6 @@ public class SecurityConfig {
                         // MANAGER ONLY
                         .requestMatchers(
                                 "/api/intel/**").hasRole("MANAGER")
-
-                        // the only one we need to trash after testing / developing TODO
-                        .requestMatchers(
-                                "/api/**").hasRole("ADMIN")
 
                         // Webhooks are typically called by Stripe/3rd parties, so keep public
                         .requestMatchers("/api/webhooks/**").permitAll()

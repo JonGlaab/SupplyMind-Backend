@@ -25,7 +25,8 @@ public class AuthService {
 
     public Map<String, Object> login(String email, String rawPassword) {
 
-        System.out.println("Total Users in DB: " + userRepository.count());
+        // I think this line is crashing staff login TODO
+        //System.out.println("Total Users in DB: " + userRepository.count());
 
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(email, rawPassword)
