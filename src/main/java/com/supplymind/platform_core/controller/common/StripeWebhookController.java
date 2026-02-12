@@ -7,6 +7,8 @@ import com.stripe.model.PaymentIntent;
 import com.stripe.net.Webhook;
 import com.supplymind.platform_core.model.core.Payment;
 import com.supplymind.platform_core.repository.core.PaymentRepository;
+import com.supplymind.platform_core.repository.core.SupplierInvoiceRepository;
+import com.supplymind.platform_core.repository.core.SupplierPaymentRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,6 +26,10 @@ public class StripeWebhookController {
     private String webhookSecret;
 
     private final PaymentRepository paymentRepo;
+
+    private final SupplierPaymentRepository supplierPaymentRepo;
+    private final SupplierInvoiceRepository supplierInvoiceRepo;
+
 
     @PostMapping("/stripe")
     @Transactional

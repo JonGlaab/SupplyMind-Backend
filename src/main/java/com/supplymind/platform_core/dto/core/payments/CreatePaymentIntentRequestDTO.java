@@ -8,5 +8,7 @@ public class CreatePaymentIntentRequestDTO {
     private Long poId;
     private String currency;       // optional: "cad"    // CAD dollars
     private String paymentType;    // CARD / BANK_TRANSFER (your field)
+    private BigDecimal amountOverride; // optional
+
 }
 

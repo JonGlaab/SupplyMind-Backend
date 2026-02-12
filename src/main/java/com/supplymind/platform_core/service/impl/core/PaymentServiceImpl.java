@@ -42,7 +42,10 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         // ✅ Use PO total as the source of truth (frontend doesn't send amount)
-        BigDecimal amount = po.getTotalAmount();
+        BigDecimal amount = (dto.getAmountOverride() != null)
+                ? dto.getAmountOverride()
+                : po.getTotalAmount();
+
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("PO totalAmount must be > 0");
         }
