@@ -1,9 +1,7 @@
 package com.supplymind.platform_core.controller.core;
 
 import com.supplymind.platform_core.common.util.PaginationDefaults;
-import com.supplymind.platform_core.dto.core.inventory.InventoryResponse;
-import com.supplymind.platform_core.dto.core.inventory.InventoryTransactionRequest;
-import com.supplymind.platform_core.dto.core.inventory.InventoryTransactionResponse;
+import com.supplymind.platform_core.dto.core.inventory.*;
 import com.supplymind.platform_core.service.core.InventoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,11 +30,12 @@ public class InventoryController {
     // GET /api/core/inventory?warehouseId=1
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER','STAFF')")
-    public Page<InventoryResponse> listByWarehouse(
-            @RequestParam Long warehouseId,
-            @PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = PaginationDefaults.DEFAULT_SORT) Pageable pageable
+    public Page<InventorySlimResponse> listByWarehouse( // Changed to Slim
+                                                        @RequestParam Long warehouseId,
+                                                        @RequestParam(required = false) String sku,
+                                                        @PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = PaginationDefaults.DEFAULT_SORT) Pageable pageable
     ) {
-        return service.listByWarehouse(warehouseId, capPageSize(pageable));
+        return service.listByWarehouse(warehouseId, sku, capPageSize(pageable));
     }
 
     // GET /api/core/inventory/low-stock?warehouseId=1&supplierId=2
@@ -68,4 +67,10 @@ public class InventoryController {
         return service.listTransactions(warehouseId, productId, capPageSize(pageable));
     }
 
+    @PostMapping("/transfer")
+    @ResponseStatus(HttpStatus.OK)
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    public void executeTransfer(@Valid @RequestBody InventoryTransferRequest req) {
+        service.executeImmediateTransfer(req);
+    }
 }

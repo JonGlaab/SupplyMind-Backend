@@ -1,14 +1,13 @@
 package com.supplymind.platform_core.service.impl.core;
 
 import com.supplymind.platform_core.common.enums.InventoryTransactionType;
-import com.supplymind.platform_core.dto.core.inventory.InventoryResponse;
-import com.supplymind.platform_core.dto.core.inventory.InventoryTransactionRequest;
-import com.supplymind.platform_core.dto.core.inventory.InventoryTransactionResponse;
+import com.supplymind.platform_core.dto.core.inventory.*;
 import com.supplymind.platform_core.exception.BadRequestException;
 import com.supplymind.platform_core.exception.NotFoundException;
 import com.supplymind.platform_core.model.core.*;
 import com.supplymind.platform_core.repository.core.*;
 import com.supplymind.platform_core.service.core.InventoryService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -151,5 +150,64 @@ public class InventoryServiceImpl implements InventoryService {
                 inv.getCreatedAt(),
                 inv.getUpdatedAt()
         );
+    }
+
+    @Transactional
+    public void executeImmediateTransfer(InventoryTransferRequest req) {
+        Inventory source = inventoryRepo.findByWarehouse_WarehouseIdAndProduct_ProductId(
+                        req.fromWarehouseId(), req.productId())
+                .orElseThrow(() -> new EntityNotFoundException("Product not found in source warehouse"));
+
+        if (source.getQtyOnHand() < req.quantity()) {
+            throw new IllegalArgumentException("Insufficient stock. Source has " + source.getQtyOnHand());
+        }
+
+        Inventory destination = inventoryRepo.findByWarehouse_WarehouseIdAndProduct_ProductId(
+                        req.toWarehouseId(), req.productId())
+                .orElseGet(() -> {
+                    Inventory newInv = new Inventory();
+                    newInv.setWarehouse(warehouseRepo.getReferenceById(req.toWarehouseId()));
+                    newInv.setProduct(productRepo.getReferenceById(req.productId()));
+                    newInv.setQtyOnHand(0);
+                    return newInv;
+                });
+
+        source.setQtyOnHand(source.getQtyOnHand() - req.quantity());
+        destination.setQtyOnHand(destination.getQtyOnHand() + req.quantity());
+
+        inventoryRepo.save(source);
+        inventoryRepo.save(destination);
+
+        // 6. Record the audit trail (Optional but recommended)
+        //createTransferLogs(req);
+    }
+
+//    private void createTransferLogs(InventoryTransferRequest req) {
+//        // You can use your txRepo here to create TWO entries:
+//        // one for TRANSFER_OUT (Source) and one for TRANSFER_IN (Destination)
+//    }
+
+    @Override
+    public Page<InventorySlimResponse> listByWarehouse(Long warehouseId, String sku, Pageable pageable) {
+        Page<Inventory> inventoryPage;
+
+        if (sku != null && !sku.trim().isEmpty()) {
+            inventoryPage = inventoryRepo.findByWarehouse_WarehouseIdAndProduct_Sku(warehouseId, sku, pageable);
+        } else {
+            inventoryPage = inventoryRepo.findAllByWarehouse_WarehouseId(warehouseId, pageable);
+        }
+
+        return inventoryPage.map(inv -> new InventorySlimResponse(
+                inv.getInventoryId(),
+                inv.getWarehouse().getWarehouseId(),
+                inv.getWarehouse().getLocationName(),
+                inv.getProduct().getProductId(),
+                inv.getProduct().getSku(),
+                inv.getProduct().getName(),
+                inv.getQtyOnHand(),
+                inv.getProduct().getReorderPoint(),
+                inv.getProduct().getUnitPrice(),
+                inv.getUpdatedAt()
+        ));
     }
 }
