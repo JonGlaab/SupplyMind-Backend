@@ -25,4 +25,6 @@ public interface ReturnService {
     ReturnRequest getReturn(Long returnId);
 
     Page<ReturnRequest> getAllReturns(Pageable pageable);
+
+    List<ReturnRequest> getReturnsByPoId(Long poId);
 }

@@ -12,9 +12,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -53,5 +55,21 @@ public class ReturnController {
     @GetMapping("/{returnId}")
     public ReturnRequest get(@PathVariable Long returnId) {
         return returnService.getReturn(returnId);
+    }
+
+    @GetMapping("/by-po/{poId}")
+    public ResponseEntity<?> getReturnsByPo(@PathVariable Long poId) {
+        List<ReturnRequest> returns = returnService.getReturnsByPoId(poId);
+
+        List<Map<String, Object>> summary = returns.stream().map(r -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", r.getId());
+            map.put("status", r.getStatus());
+            map.put("reason", r.getReason());
+            map.put("requestedAt", r.getRequestedAt());
+            return map;
+        }).toList();
+
+        return ResponseEntity.ok(summary);
     }
 }

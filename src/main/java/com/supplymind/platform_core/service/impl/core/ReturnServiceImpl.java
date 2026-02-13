@@ -55,11 +55,9 @@ public class ReturnServiceImpl implements ReturnService {
         r.setRequestedBy(dto.getRequestedBy());
         r.setStatus(ReturnStatus.REQUESTED);
 
-        // Avoid duplicate lines for same poItem in one request
         Set<Long> seenPoItems = new HashSet<>();
 
         for (CreateReturnLineDTO lineDTO : dto.getItems()) {
-            // ✅ FIXED BUG
             if (lineDTO.getPoItemId() == null) throw new IllegalArgumentException("poItemId is required");
             if (!seenPoItems.add(lineDTO.getPoItemId())) {
                 throw new IllegalArgumentException("Duplicate poItemId in request: " + lineDTO.getPoItemId());
@@ -68,7 +66,6 @@ public class ReturnServiceImpl implements ReturnService {
             PurchaseOrderItem poItem = poItemRepo.findById(lineDTO.getPoItemId())
                     .orElseThrow(() -> new IllegalArgumentException("PO item not found: " + lineDTO.getPoItemId()));
 
-            // Ensure item belongs to the PO
             if (!poItem.getPo().getPoId().equals(po.getPoId())) {
                 throw new IllegalArgumentException("PO item " + poItem.getPoItemId() + " does not belong to PO " + po.getPoId());
             }
@@ -76,7 +73,6 @@ public class ReturnServiceImpl implements ReturnService {
             int receivedQty = safeInt(poItem.getReceivedQty());
             int orderedQty = safeInt(poItem.getOrderedQty());
 
-            // You can only return what was RECEIVED, minus already "consumed" by other returns
             int alreadyConsumed = returnLineRepo.sumApprovedQtyByPoItemAndStatuses(
                     poItem.getPoItemId(),
                     STATUSES_THAT_CONSUME_QTY
@@ -298,4 +294,11 @@ public class ReturnServiceImpl implements ReturnService {
         // never refund negative
         return total.max(BigDecimal.ZERO);
     }
+
+    @Override
+    public List<ReturnRequest> getReturnsByPoId(Long poId) {
+        // This calls your new repository method
+        return returnRepo.findByPo_PoId(poId);
+    }
+
 }
