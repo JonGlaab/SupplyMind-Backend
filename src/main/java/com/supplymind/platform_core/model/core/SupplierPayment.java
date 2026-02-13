@@ -19,7 +19,7 @@ public class SupplierPayment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "supplier_payment_id", nullable = false)
+    @Column(name = "payment_id", nullable = false)
     private Long supplierPaymentId;
 
     @ManyToOne(fetch = FetchType.EAGER, optional = false)

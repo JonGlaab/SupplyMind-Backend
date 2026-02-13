@@ -501,6 +501,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 po.getStatus(),
                 po.getTotalAmount(),
                 po.getCreatedOn(),
+                po.getStatus() == PurchaseOrderStatus.COMPLETED ? po.getLastActivityAt() : null,
                 pdfUrl,
                 itemResponses
         );
