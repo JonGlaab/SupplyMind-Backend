@@ -331,23 +331,23 @@ Elizabeth
 
 2026-02-13
   Minh
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? designed mobile flow
+    What will I do today? Testing and troubleshooting
     What impediments are blocking me?
 
   Fatemeh
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? financial dashboard
+    What will I do today? finance flow testing
     What impediments are blocking me?
 
   Jonathan
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? reply request and transfers, troubleshooting
+    What will I do today? manager lag, make sure every link works as intended
     What impediments are blocking me?
 
   Elizabeth
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? Jira organizing
+    What will I do today? tested PO process and bug hunting, PO dashboard fixes
     What impediments are blocking me?
 
 2026-02-14
