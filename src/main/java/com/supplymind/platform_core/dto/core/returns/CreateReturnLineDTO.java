@@ -7,4 +7,5 @@ public class CreateReturnLineDTO {
     private Long poItemId;
     private Integer qtyReturnRequested;
     private String conditionNotes;
+    private String evidenceUrl;
 }

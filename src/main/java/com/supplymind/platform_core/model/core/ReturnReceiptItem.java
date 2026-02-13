@@ -28,4 +28,6 @@ public class ReturnReceiptItem {
 
     @Column(name = "qty_received_now", nullable = false)
     private Integer qtyReceivedNow;
+
+
 }

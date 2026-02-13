@@ -95,6 +95,9 @@ public class ReturnServiceImpl implements ReturnService {
             li.setQtyReturnRequested(reqQty);
             li.setUnitCost(poItem.getUnitCost() == null ? BigDecimal.ZERO : poItem.getUnitCost());
             li.setConditionNotes(lineDTO.getConditionNotes());
+            if (lineDTO.getEvidenceUrl() != null && !lineDTO.getEvidenceUrl().isEmpty()) {
+                li.setEvidenceUrl(lineDTO.getEvidenceUrl());
+            }
 
             r.addItem(li);
         }

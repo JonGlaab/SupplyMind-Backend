@@ -47,7 +47,9 @@ public class SecurityConfig {
                         // STAFF / ALL
                         .requestMatchers(
                                 "/api/core/**",
-                                "/api/storage/**").authenticated()
+                                "/api/storage/**",
+                                "/api/mobile/**").authenticated()
+                        //Currently mobile is for everyone, TODO: change if needed
 
                         // PO --  looks like PO controllers are all in core.
                         // I don't want to re-route them now but it could be cleaned up

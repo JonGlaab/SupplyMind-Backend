@@ -52,6 +52,9 @@ public class ReturnLineItem {
     @Column(name = "condition_notes")
     private String conditionNotes;
 
+    @Column(name = "evidence_url")
+    private String evidenceUrl;
+
     public int remainingToReceive() {
         return Math.max(0, qtyApproved - qtyReceived);
     }
