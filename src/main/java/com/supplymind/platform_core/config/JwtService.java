@@ -25,12 +25,13 @@ public class JwtService {
         claims.put("userId", user.getId());
         claims.put("firstName", user.getFirstName());
         claims.put("lastName", user.getLastName());
+        long expirationTime = 1000L * 60 * 60 * 24 * 30;
 
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(user.getEmail())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10))
+                .setExpiration(new Date(System.currentTimeMillis() + expirationTime))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }

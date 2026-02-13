@@ -1,6 +1,6 @@
 package com.supplymind.platform_core.controller.auth;
 
-import com.supplymind.platform_core.service.QrAuthService;
+import com.supplymind.platform_core.service.auth.QrAuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
