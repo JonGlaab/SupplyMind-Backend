@@ -45,7 +45,7 @@ public class AiStatusScanner {
                     .header("Authorization", "Bearer " + openRouterApiKey)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of(
-                            "model", "meta-llama/llama-3.3-70b-instruct:free",
+                            "model", "arcee-ai/trinity-large-preview:free",
                             "messages", List.of(Map.of("role", "user", "content", prompt)),
                             "temperature", 0.1
                     ))
