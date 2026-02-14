@@ -6,7 +6,6 @@ import com.supplymind.platform_core.model.core.PurchaseOrder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
@@ -14,7 +13,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
-public class  AiContentService {
+public class AiContentService {
 
     @Value("${openrouter.api.key}")
     private String openRouterApiKey;
@@ -30,13 +29,12 @@ public class  AiContentService {
     }
 
     /**
-     * Generates a professional email using Meta Llama 3.3 via OpenRouter.
+     * Generates a professional email using Arcee Trinity via OpenRouter.
      * @param po The Purchase Order entity (contains items).
      * @param managerName The name of the user clicking "Send".
      * @param supplierName The name of the recipient supplier.
      * @return HTML Email Body string.
      */
-
     public String generatePurchaseOrderEmail(PurchaseOrder po, String managerName, String supplierName) {
 
         String itemsSummary = po.getPurchaseOrderItems().stream()
@@ -71,7 +69,7 @@ public class  AiContentService {
                     .header("Authorization", "Bearer " + openRouterApiKey)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of(
-                            "model", "meta-llama/llama-3.3-70b-instruct:free",
+                            "model", "arcee-ai/trinity-large-preview:free",
                             "messages", List.of(
                                     Map.of("role", "system", "content", "You are a backend API that outputs only valid HTML."),
                                     Map.of("role", "user", "content", prompt)
@@ -85,7 +83,7 @@ public class  AiContentService {
             JsonNode root = objectMapper.readTree(responseBody);
             String content = root.path("choices").get(0).path("message").path("content").asText();
 
-            // Remove Markdown if Llama adds it (e.g. ```html ... ```)
+            // Remove Markdown if the model adds it (e.g. ```html ... ```)
             return content
                     .replace("```html", "")
                     .replace("```", "")
