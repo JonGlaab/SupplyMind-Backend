@@ -3,6 +3,7 @@ package com.supplymind.platform_core.config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -45,6 +46,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                         // STAFF / ALL
+                        .requestMatchers(HttpMethod.POST, "/api/core/purchase-orders/{poId" +
+                                "}/receive").hasAnyRole("ADMIN", "MANAGER", "PROCUREMENT_OFFICER"
+                                , "STAFF")
                         .requestMatchers(
                                 "/api/core/**",
                                 "/api/storage/**",

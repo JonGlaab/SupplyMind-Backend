@@ -415,21 +415,23 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         PurchaseOrder po = requirePo(poId);
         List<PurchaseOrderItem> items = itemRepo.findAllByPo_PoId(poId);
 
-        List<ReceivingStatusResponse.ReceivingLineStatus> lines = items.stream().map(i -> {
-            int ordered = i.getOrderedQty() == null ? 0 : i.getOrderedQty();
-            int received = i.getReceivedQty() == null ? 0 : i.getReceivedQty();
-            int remaining = Math.max(0, ordered - received);
+        List<ReceivingStatusResponse.ReceivingLineStatus> lines = items.stream()
+                .filter(i -> i.getProduct() != null)
+                .map(i -> {
+                    int ordered = i.getOrderedQty() == null ? 0 : i.getOrderedQty();
+                    int received = i.getReceivedQty() == null ? 0 : i.getReceivedQty();
+                    int remaining = Math.max(0, ordered - received);
 
-            return new ReceivingStatusResponse.ReceivingLineStatus(
-                    i.getPoItemId(),
-                    i.getProduct().getProductId(),
-                    i.getProduct().getSku(),
-                    i.getProduct().getName(),
-                    ordered,
-                    received,
-                    remaining
-            );
-        }).toList();
+                    return new ReceivingStatusResponse.ReceivingLineStatus(
+                            i.getPoItemId(),
+                            i.getProduct().getProductId(),
+                            i.getProduct().getSku(),
+                            i.getProduct().getName(),
+                            ordered,
+                            received,
+                            remaining
+                    );
+                }).collect(Collectors.toList());
 
         return new ReceivingStatusResponse(po.getPoId(), lines);
     }
