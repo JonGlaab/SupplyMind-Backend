@@ -40,16 +40,12 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Page<ProductResponse> list(Pageable pageable) {
-        // 1. Fetch the combined data in ONE trip to the DB
         Page<Object[]> results = repo.findAllWithTotalStock(pageable);
 
-        // 2. Map the Object array to your ProductResponse
         return results.map(row -> {
             Product p = (Product) row[0];
-            // row[1] is the result of SUM(), which comes back as a Long or 0
             Long totalQty = (row[1] != null) ? (Long) row[1] : 0L;
 
-            // Use a dedicated helper to avoid the "toResponse" loop
             return toResponseWithQty(p, totalQty.intValue());
         });
     }

@@ -278,60 +278,64 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     @Override
     @Transactional
     public PurchaseOrderResponse receive(Long poId, ReceivePurchaseOrderRequest req) {
-
         try {
             PurchaseOrder po = requirePo(poId);
 
-            // Only DELIVERED orders can be received.
             if (po.getStatus() != PurchaseOrderStatus.DELIVERED) {
                 throw new BadRequestException("PO must be in DELIVERED status to process incoming stock.");
             }
 
+            // FIX 1: Explicitly cast/check types to ensure the Map lookup doesn't return null
             Map<Long, Integer> receiveMap = req.lines().stream()
                     .collect(Collectors.toMap(
-                            ReceivePurchaseOrderRequest.ReceiveLine::poItemId,
+                            line -> Long.valueOf(line.poItemId()), // Ensure Long key
                             ReceivePurchaseOrderRequest.ReceiveLine::receiveQty,
-                            (v1, v2) -> v2)); // Last entry wins in case of duplicates
+                            (v1, v2) -> v2));
 
             List<PurchaseOrderItem> items = itemRepo.findAllByPo_PoId(poId);
 
             for (PurchaseOrderItem item : items) {
-                // The request contains the TOTAL quantity received for each item. Default to 0 if not provided.
-                Integer totalReceivedQty = receiveMap.getOrDefault(item.getPoItemId(), 0);
+                Long dbId = item.getPoItemId();
+                Integer received = receiveMap.get(dbId);
+
+                // THIS LOG WILL REVEAL THE MISMATCH
+                log.info("CHECKING ITEM: DB_ID={} ({}) | MAP_KEYS={} | MATCH_FOUND={}",
+                        dbId, dbId.getClass().getSimpleName(), receiveMap.keySet(), receiveMap.containsKey(dbId));
+
+                if (received == null) continue;
+
+                Integer totalReceivedQty = receiveMap.get(item.getPoItemId());
                 int orderedQty = item.getOrderedQty();
 
-                if (totalReceivedQty < 0) {
-                    throw new BadRequestException("Receive quantity cannot be negative for item " + item.getPoItemId());
-                }
-                if (totalReceivedQty > orderedQty) {
-                    throw new BadRequestException("Receive quantity (" + totalReceivedQty + ") cannot exceed ordered quantity (" + orderedQty + ") for item " + item.getPoItemId());
-                }
+                // Guard rails
+                if (totalReceivedQty < 0) throw new BadRequestException("Negative qty for item " + item.getPoItemId());
+                if (totalReceivedQty > orderedQty) throw new BadRequestException("Exceeds ordered qty for item " + item.getPoItemId());
 
-                // Since this is a one-shot operation on a DELIVERED order, 'alreadyReceived' should be 0.
-                // We calculate the delta to add to inventory.
                 int alreadyReceived = item.getReceivedQty() == null ? 0 : item.getReceivedQty();
                 int qtyToAddToInventory = totalReceivedQty - alreadyReceived;
 
                 if (qtyToAddToInventory < 0) {
-                    // This implies the user is trying to reduce the received quantity, which is not allowed in this flow.
                     throw new BadRequestException("Cannot reduce already received quantity for item " + item.getPoItemId());
                 }
 
-                // Set the final received quantity for the item.
+                // FIX 3: Set the value. (itemRepo.save is optional here but good for clarity)
                 item.setReceivedQty(totalReceivedQty);
                 itemRepo.save(item);
 
-                // Update inventory only if there's a change.
                 if (qtyToAddToInventory > 0) {
                     Long warehouseId = po.getWarehouse().getWarehouseId();
                     Long productId = item.getProduct().getProductId();
 
+                    // FIX 4: Explicitly manage the Inventory state
                     Inventory inv = inventoryRepo.findByWarehouse_WarehouseIdAndProduct_ProductId(warehouseId, productId)
-                            .orElseGet(() -> Inventory.builder()
-                                    .warehouse(po.getWarehouse())
-                                    .product(item.getProduct())
-                                    .qtyOnHand(0)
-                                    .build());
+                            .orElseGet(() -> {
+                                Inventory newInv = Inventory.builder()
+                                        .warehouse(po.getWarehouse())
+                                        .product(item.getProduct())
+                                        .qtyOnHand(0)
+                                        .build();
+                                return inventoryRepo.save(newInv); // Save immediately if new
+                            });
 
                     int currentQtyOnHand = inv.getQtyOnHand() == null ? 0 : inv.getQtyOnHand();
                     inv.setQtyOnHand(currentQtyOnHand + qtyToAddToInventory);
@@ -347,11 +351,12 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 }
             }
 
-            // After receiving, the process is considered complete for this PO.
             po.setStatus(PurchaseOrderStatus.COMPLETED);
+
+            // FIX 5: Recalc and then a final save for the PO
+            recalcTotal(po, items);
             poRepo.save(po);
 
-            recalcTotal(po, items); // This is based on ordered qty, so it's fine.
             return toResponse(po, items);
 
         } catch (Exception e) {
