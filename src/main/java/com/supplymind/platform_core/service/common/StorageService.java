@@ -10,4 +10,6 @@ public interface StorageService {
     String presignGetUrl(String objectKey);
 
     String uploadFile(String objectKey, File file, String contentType);
+
+    void deleteFile(String objectKey);
 }
