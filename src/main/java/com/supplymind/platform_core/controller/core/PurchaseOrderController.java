@@ -172,13 +172,15 @@ public class PurchaseOrderController {
     @GetMapping("/{poId}/preview-pdf")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
     @Transactional(readOnly = true)
-    public ResponseEntity<Resource> previewPurchaseOrderPdf(@PathVariable Long poId) {
+    public ResponseEntity<Resource> previewPurchaseOrderPdf(
+            @PathVariable Long poId,
+            @RequestParam(defaultValue = "false") boolean includeSignature
+    ) {
         try {
             PurchaseOrder po = purchaseOrderRepository.findById(poId)
                     .orElseThrow(() -> new RuntimeException("Purchase Order not found: " + poId));
 
-            // A PO is signed if it has an approver.
-            boolean isSigned = po.getApprover() != null;
+            boolean isSigned = includeSignature && po.getApprover() != null;
             File pdfFile = pdfGenerationService.generatePurchaseOrderPdf(po, po.getApprover(), isSigned);
             FileSystemResource resource = new FileSystemResource(pdfFile);
 
@@ -253,7 +255,7 @@ public class PurchaseOrderController {
                 return ResponseEntity.badRequest().body("Supplier email is missing.");
             }
 
-            File pdfAttachment = pdfGenerationService.generatePurchaseOrderPdf(po, po.getApprover(), true);
+            File pdfAttachment = pdfGenerationService.generatePurchaseOrderPdf(po, po.getApprover(), request.isAddSignature());
 
 
             emailProvider.sendEmail(

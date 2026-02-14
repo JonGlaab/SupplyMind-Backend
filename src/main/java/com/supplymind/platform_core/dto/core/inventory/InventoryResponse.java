@@ -12,6 +12,7 @@ public record InventoryResponse(
         String productName,
         Integer qtyOnHand,
         Integer reorderPoint,
+        Integer maxStockLevel,
         Long supplierId,
         String supplierName,
         BigDecimal unitPrice,

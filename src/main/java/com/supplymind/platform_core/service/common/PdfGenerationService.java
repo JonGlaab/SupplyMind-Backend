@@ -10,6 +10,7 @@ import com.lowagie.text.pdf.PdfWriter;
 import com.supplymind.platform_core.model.auth.User;
 import com.supplymind.platform_core.model.core.PurchaseOrder;
 import com.supplymind.platform_core.model.core.PurchaseOrderItem;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -26,7 +27,10 @@ import java.util.Locale;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class PdfGenerationService {
+
+    private final StorageService storageService;
 
     private static final Font FONT_TITLE = new Font(Font.HELVETICA, 18, Font.BOLD);
     private static final Font FONT_HEADER = new Font(Font.HELVETICA, 12, Font.BOLD);
@@ -158,40 +162,48 @@ public class PdfGenerationService {
         table.setWidthPercentage(40);
         table.setHorizontalAlignment(Element.ALIGN_LEFT);
 
-        PdfPCell cell = new PdfPCell();
-        cell.setBorder(Rectangle.TOP);
-        cell.setPaddingTop(10);
+        // Cell for the signature image
+        PdfPCell imageCell = new PdfPCell();
+        imageCell.setBorder(Rectangle.NO_BORDER);
+        imageCell.setFixedHeight(40f); // Space for the signature
 
         if (signed) {
             User user = (approver != null) ? approver : po.getBuyer();
-            String name = (user != null) ? user.getFirstName() + " " + user.getLastName() : "Authorized Manager";
-
-            boolean imageLoaded = false;
             if (user != null && user.getSignatureUrl() != null && !user.getSignatureUrl().isEmpty()) {
                 try {
-
-                    Image signatureImg = Image.getInstance(URI.create(user.getSignatureUrl()).toURL());
-                    signatureImg.scaleToFit(150, 60);
-                    cell.addElement(signatureImg);
-                    imageLoaded = true;
+                    String presignedUrl = storageService.presignGetUrl(user.getSignatureUrl());
+                    Image signatureImg = Image.getInstance(URI.create(presignedUrl).toURL());
+                    signatureImg.scaleToFit(120, 50);
+                    imageCell.addElement(signatureImg);
                 } catch (Exception e) {
                     log.warn("Failed to load signature image: {}", user.getSignatureUrl());
+                    imageCell.addElement(new Paragraph("(Signature not available)", FONT_SMALL));
                 }
+            } else {
+                imageCell.addElement(new Paragraph("(No signature on file)", FONT_SMALL));
             }
+        }
+        table.addCell(imageCell);
 
-            cell.addElement(new Paragraph("Authorized Signature", FONT_HEADER));
-            cell.addElement(new Paragraph(name, FONT_NORMAL));
-            cell.addElement(new Paragraph("Date: " + java.time.LocalDate.now(), FONT_NORMAL));
+        // Cell for the signature line and text
+        PdfPCell lineCell = new PdfPCell();
+        lineCell.setBorder(Rectangle.TOP);
+        lineCell.setPaddingTop(5);
 
-            if (imageLoaded) {
-                cell.addElement(new Paragraph("(Digitally Signed via SupplyMind)", FONT_SMALL));
-            }
+        User user = (approver != null) ? approver : po.getBuyer();
+        String name = (user != null) ? user.getFirstName() + " " + user.getLastName() : "Authorized Manager";
+
+        lineCell.addElement(new Paragraph("Authorized Signature", FONT_HEADER));
+        lineCell.addElement(new Paragraph(name, FONT_NORMAL));
+        lineCell.addElement(new Paragraph("Date: " + java.time.LocalDate.now(), FONT_NORMAL));
+
+        if (signed) {
+            lineCell.addElement(new Paragraph("(Digitally Signed via SupplyMind)", FONT_SMALL));
         } else {
-            cell.addElement(new Paragraph("Authorized Signature", FONT_HEADER));
-            cell.addElement(new Paragraph("(Draft - Not valid for payment)", FONT_SMALL));
+            lineCell.addElement(new Paragraph("(Draft - Not valid for payment)", FONT_SMALL));
         }
 
-        table.addCell(cell);
+        table.addCell(lineCell);
         doc.add(table);
     }
 

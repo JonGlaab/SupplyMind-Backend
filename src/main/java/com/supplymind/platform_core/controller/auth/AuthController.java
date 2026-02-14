@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
@@ -69,23 +70,27 @@ public class AuthController {
             return ResponseEntity.status(404).body(e.getMessage());
         }
     }
-    @PutMapping("/me/signature")
-    public ResponseEntity<?> updateSignature(
+
+    @PostMapping("/me/signature")
+    public ResponseEntity<?> uploadSignature(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody Map<String, String> body
+            @RequestParam("file") MultipartFile file
     ) {
         try {
-            String newUrl = body.get("signatureUrl");
-
-            User user = userRepository.findByEmail(userDetails.getUsername())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-
-            user.setSignatureUrl(newUrl);
-            userRepository.save(user);
-
-            return ResponseEntity.ok(Map.of("message", "Signature updated"));
+            String url = authService.uploadSignature(userDetails.getUsername(), file);
+            return ResponseEntity.ok(Map.of("url", url));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Failed to update signature");
+            return ResponseEntity.internalServerError().body("Failed to upload signature");
+        }
+    }
+
+    @DeleteMapping("/me/signature")
+    public ResponseEntity<?> removeSignature(@AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            authService.removeSignature(userDetails.getUsername());
+            return ResponseEntity.ok(Map.of("message", "Signature removed"));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Failed to remove signature");
         }
     }
 }
