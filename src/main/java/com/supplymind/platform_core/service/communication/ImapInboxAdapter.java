@@ -29,10 +29,10 @@ public class ImapInboxAdapter implements InboxProvider {
 
     private static final String IMAP_HOST = "imap.gmail.com";
 
-    // Pattern to strip remaining HTML tags
-    private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]+>");
+    // ✅ NEW: Increased scan depth to catch older emails (Backlog processing)
+    private static final int SCAN_DEPTH = 500;
 
-    // Pattern to clean up Reply History
+    private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]+>");
     private static final Pattern REPLY_SPLIT_PATTERN = Pattern.compile(
             "(\\nOn\\s.+,.+wrote:|\\nFrom:\\s.+|\\nSent:\\s.+|\\n-----Original Message-----)",
             Pattern.CASE_INSENSITIVE
@@ -72,17 +72,23 @@ public class ImapInboxAdapter implements InboxProvider {
             folder.open(Folder.READ_ONLY);
 
             int count = folder.getMessageCount();
-            int start = Math.max(1, count - 50);
+            if (count == 0) return result;
+            
+            int start = Math.max(1, count - SCAN_DEPTH);
             Message[] messages = folder.getMessages(start, count);
 
             FetchProfile fp = new FetchProfile();
             fp.add(FetchProfile.Item.ENVELOPE);
             folder.fetch(messages, fp);
 
-            for (Message msg : messages) {
+            // Process latest first
+            for (int i = messages.length - 1; i >= 0; i--) {
+                Message msg = messages[i];
                 try {
                     InboxMessage dto = new InboxMessage();
                     dto.setSubject(msg.getSubject());
+                    if (dto.getSubject() == null) continue;
+
                     dto.setTimestamp(msg.getSentDate() != null ? msg.getSentDate().getTime() : System.currentTimeMillis());
 
                     String[] messageIds = msg.getHeader("Message-ID");
@@ -95,25 +101,25 @@ public class ImapInboxAdapter implements InboxProvider {
                     StringBuilder textBody = new StringBuilder();
                     List<String> attachmentNames = new ArrayList<>();
 
-                    extractContent(msg, textBody, attachmentNames);
+                    try {
+                        extractContent(msg, textBody, attachmentNames);
+                    } catch (Exception e) {
+                        log.warn("Could not extract content for msg: {}", dto.getSubject());
+                    }
 
                     String fullBody = textBody.toString().trim();
                     if (fullBody.isEmpty()) fullBody = "(No text content found)";
 
-                    // Strip the reply history so you only see the new message
                     String cleanBody = cleanReplyBody(fullBody);
-
                     dto.setBody(cleanBody);
-                    dto.setSnippet(cleanBody.length() > 100 ? cleanBody.substring(0, 100) + "..." : cleanBody);
+                    dto.setSnippet(cleanBody.length() > 150 ? cleanBody.substring(0, 150) + "..." : cleanBody);
                     dto.setAttachments(attachmentNames);
 
                     result.add(dto);
                 } catch (Exception e) {
-                    log.error("Error parsing message subject: " + msg.getSubject(), e);
+                    log.error("Skipping message due to parse error", e);
                 }
             }
-            result.sort(Comparator.comparingLong(InboxMessage::getTimestamp));
-
         } catch (Exception e) {
             log.error("Failed to fetch messages from " + labelId, e);
         } finally {
@@ -123,32 +129,19 @@ public class ImapInboxAdapter implements InboxProvider {
         return result;
     }
 
-    // --- ⬇️ UPDATED CONTENT EXTRACTOR ---
     private void extractContent(Part part, StringBuilder textBody, List<String> attachments) throws Exception {
         if (part.isMimeType("text/plain")) {
             textBody.append((String) part.getContent());
         }
         else if (part.isMimeType("text/html")) {
             String html = (String) part.getContent();
-
-            // 1. Replace HTML breaks with actual Newlines BEFORE stripping tags
-            // Replace <br>, <br/> with \n
-            html = html.replaceAll("(?i)<br\\s*/?>", "\n");
-            // Replace paragraph endings with double newline
-            html = html.replaceAll("(?i)</p>", "\n\n");
-            // Replace div endings with single newline
-            html = html.replaceAll("(?i)</div>", "\n");
-
-            // 2. Now strip all other tags (like <b>, <span>, etc.)
+            html = html.replaceAll("(?i)<br\\s*/?>", "\n")
+                    .replaceAll("(?i)</p>", "\n\n")
+                    .replaceAll("(?i)</div>", "\n");
             String cleanText = HTML_TAG_PATTERN.matcher(html).replaceAll("").trim();
-
-            // 3. Decode basic HTML entities to make text readable
             cleanText = cleanText.replace("&nbsp;", " ")
-                    .replace("&amp;", "&")
-                    .replace("&quot;", "\"")
-                    .replace("&gt;", ">")
-                    .replace("&lt;", "<");
-
+                    .replace("&amp;", "&").replace("&quot;", "\"")
+                    .replace("&gt;", ">").replace("&lt;", "<");
             textBody.append(cleanText);
         }
         else if (part.isMimeType("multipart/*")) {
@@ -163,7 +156,6 @@ public class ImapInboxAdapter implements InboxProvider {
         }
     }
 
-    // --- HELPER: Strip "On [Date] ... wrote:" ---
     private String cleanReplyBody(String body) {
         Matcher matcher = REPLY_SPLIT_PATTERN.matcher(body);
         if (matcher.find()) {
@@ -172,39 +164,17 @@ public class ImapInboxAdapter implements InboxProvider {
         return body;
     }
 
-    // --- STANDARD METHODS ---
     @Override
     public void moveMessage(String messageId, String sourceLabel, String targetLabel) {
-        Store store = null;
-        Folder sourceFolder = null;
-        Folder targetFolder = null;
-        try {
-            store = connect();
-            sourceFolder = store.getFolder(sourceLabel);
-            if (!sourceFolder.exists()) return;
-            sourceFolder.open(Folder.READ_WRITE);
-
-            targetFolder = store.getFolder(targetLabel);
-            if (!targetFolder.exists()) targetFolder.create(Folder.HOLDS_MESSAGES);
-            targetFolder.open(Folder.READ_WRITE);
-
-            Message[] messages = sourceFolder.search(new HeaderTerm("Message-ID", messageId));
-            if (messages.length > 0) {
-                sourceFolder.copyMessages(messages, targetFolder);
-                messages[0].setFlag(Flags.Flag.DELETED, true);
-            }
-        } catch (Exception e) {
-            log.error("Failed to move message", e);
-        } finally {
-            try {
-                if (sourceFolder != null && sourceFolder.isOpen()) sourceFolder.close(true);
-                if (store != null) store.close();
-            } catch (Exception e) { /* ignore */ }
-        }
+        operateOnMessage(messageId, sourceLabel, targetLabel, true);
     }
 
     @Override
     public void copyMessage(String messageId, String sourceLabel, String targetLabel) {
+        operateOnMessage(messageId, sourceLabel, targetLabel, false);
+    }
+
+    private void operateOnMessage(String messageId, String sourceLabel, String targetLabel, boolean isMove) {
         Store store = null;
         Folder sourceFolder = null;
         Folder targetFolder = null;
@@ -212,20 +182,34 @@ public class ImapInboxAdapter implements InboxProvider {
             store = connect();
             sourceFolder = store.getFolder(sourceLabel);
             if (!sourceFolder.exists()) return;
-            sourceFolder.open(Folder.READ_ONLY);
+            // READ_WRITE needed for moving (flagging as deleted)
+            sourceFolder.open(Folder.READ_WRITE);
 
             targetFolder = store.getFolder(targetLabel);
-            if (!targetFolder.exists()) targetFolder.create(Folder.HOLDS_MESSAGES);
+            if (!targetFolder.exists()) {
+                boolean created = targetFolder.create(Folder.HOLDS_MESSAGES);
+                if (!created) log.warn("Failed to create folder: {}", targetLabel);
+            }
             targetFolder.open(Folder.READ_WRITE);
 
-            if (targetFolder.search(new HeaderTerm("Message-ID", messageId)).length > 0) return;
+            // Avoid duplicating if already there
+            if (targetFolder.search(new HeaderTerm("Message-ID", messageId)).length > 0) {
+                log.debug("Message {} already exists in {}", messageId, targetLabel);
+                return;
+            }
 
             Message[] messages = sourceFolder.search(new HeaderTerm("Message-ID", messageId));
             if (messages.length > 0) {
                 sourceFolder.copyMessages(messages, targetFolder);
+                if (isMove) {
+                    messages[0].setFlag(Flags.Flag.DELETED, true);
+                    log.info("Moved message {} from {} to {}", messageId, sourceLabel, targetLabel);
+                } else {
+                    log.info("Copied message {} from {} to {}", messageId, sourceLabel, targetLabel);
+                }
             }
         } catch (Exception e) {
-            log.error("Failed to copy message", e);
+            log.error("Failed to move/copy message", e);
         } finally {
             closeQuietly(targetFolder, null);
             closeQuietly(sourceFolder, store);
