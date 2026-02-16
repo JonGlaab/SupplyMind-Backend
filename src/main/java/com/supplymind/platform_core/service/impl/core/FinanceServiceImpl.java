@@ -11,7 +11,9 @@ import com.supplymind.platform_core.repository.core.PurchaseOrderRepository;
 import com.supplymind.platform_core.repository.core.SupplierInvoiceRepository;
 import com.supplymind.platform_core.repository.core.SupplierPaymentRepository;
 import com.supplymind.platform_core.service.core.FinanceService;
-import jakarta.transaction.Transactional;
+
+import org.springframework.transaction.annotation.Transactional;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -115,8 +117,31 @@ public class FinanceServiceImpl implements FinanceService {
     }
 
 
-    public SupplierInvoice getInvoiceByPoId(Long poId) {
-        return invoiceRepo.findByPo_PoId(poId).orElse(null);
+
+    @Override
+    @Transactional(readOnly = true)
+    public InvoiceByPoResponseDTO getInvoiceByPoId(Long poId) {
+
+        SupplierInvoice inv = invoiceRepo.findByPo_PoId(poId)
+                .orElseThrow(() -> new IllegalArgumentException("No invoice exists for PO: " + poId));
+
+        return new InvoiceByPoResponseDTO(
+                inv.getInvoiceId(),
+                inv.getPo().getPoId(),
+                inv.getSupplier().getSupplierId(),
+                inv.getCurrency(),
+                inv.getTotalAmount(),
+                inv.getPaidAmount(),
+                inv.getRemainingAmount(),
+                inv.getTotalAmountCents(),
+                inv.getPaidAmountCents(),
+                inv.getRemainingAmountCents(),
+                inv.getStatus().name(),
+                inv.getDueDate(),
+                inv.getCreatedAt(),
+                inv.getApprovedAt(),
+                inv.getPaidAt()
+        );
     }
 
     @Override

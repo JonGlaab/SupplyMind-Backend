@@ -17,7 +17,8 @@ public interface FinanceService {
 
     SupplierFinanceSummaryDTO getSupplierSummary(Long supplierId);
 
-    SupplierInvoice getInvoiceByPoId(Long poId);
+    InvoiceByPoResponseDTO getInvoiceByPoId(Long poId);
+
     List<FinanceReadyPoDTO> getReadyPos();
 
     void executePayment(Long supplierPaymentId);

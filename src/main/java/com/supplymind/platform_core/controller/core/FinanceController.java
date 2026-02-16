@@ -59,9 +59,12 @@ public class FinanceController {
         return financeService.getReadyPos();
     }
 
+
+
     @GetMapping("/invoices/by-po/{poId}")
-    public SupplierInvoice invoiceByPo(@PathVariable Long poId) {
+    public InvoiceByPoResponseDTO invoiceByPo(@PathVariable Long poId) {
         return financeService.getInvoiceByPoId(poId);
     }
+
 
 }
