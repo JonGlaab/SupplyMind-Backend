@@ -6,6 +6,7 @@ import com.supplymind.platform_core.repository.core.PurchaseOrderRepository;
 import com.supplymind.platform_core.service.intel.AiStatusScanner;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.simp.SimpMessagingTemplate; // <--- NEW IMPORT
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,20 +25,17 @@ public class EmailAutomationService {
     private final ImapInboxAdapter inboxProvider;
     private final PurchaseOrderRepository poRepo;
     private final AiStatusScanner aiScanner;
+    private final SimpMessagingTemplate messagingTemplate;
 
     private final Pattern PO_PATTERN = Pattern.compile("(?i)(?:Purchase\\s+Order|PO)[-\\s#]*(\\d+)");
 
-    // Run every 60 seconds
     @Scheduled(fixedDelay = 60000)
     @Transactional
     public void scanAndRouteEmails() {
         log.debug("🕵️ Starting Inbox & Sent Scan...");
 
-        // 1. Scan Supplier Replies (INBOX) -> MOVE to Folder
         scanFolderAndRoute("INBOX", true);
 
-        // 2. Scan My Sent Emails ([Gmail]/Sent Mail) -> COPY to Folder
-        // Note: Check if your Gmail uses "[Gmail]/Sent Mail" or "[Gmail]/Sent"
         scanFolderAndRoute("[Gmail]/Sent Mail", false);
     }
 
@@ -57,8 +55,7 @@ public class EmailAutomationService {
 
                         boolean isSupplierReply = !msg.getFrom().toLowerCase().contains("supplymind");
 
-                        // --- LOGIC A: AI ANALYSIS (FAIL-SAFE) ---
-                        // We wrap this in a try-catch so AI failures don't stop the moving process
+                        // --- LOGIC A: AI ANALYSIS ---
                         if (isMoveOperation && isSupplierReply) {
                             try {
                                 handleSupplierReply(po, msg);
@@ -67,18 +64,22 @@ public class EmailAutomationService {
                             }
                         }
 
-                        // --- LOGIC B: ROUTING (Guaranteed Execution) ---
                         try {
                             if (isMoveOperation) {
-                                // Move from Inbox (cleans up Inbox)
                                 inboxProvider.moveMessage(msg.getMessageId(), sourceFolder, targetLabel);
                                 log.info("✅ Moved message for PO #{} to {}", poId, targetLabel);
                             } else {
                                 inboxProvider.copyMessage(msg.getMessageId(), sourceFolder, targetLabel);
                                 log.info("✅ Copied sent message for PO #{} to {}", poId, targetLabel);
                             }
+
+                            // --- NEW: WEBSOCKET BROADCAST ---
+                            // Notify frontend immediately that a new message is available for this PO
+                            messagingTemplate.convertAndSend("/topic/po/" + poId, msg);
+                            log.info(" Broadcasted WebSocket event for PO #{}", poId);
+
                         } catch (Exception e) {
-                            log.error("❌ Failed to move/copy email for PO #" + poId, e);
+                            log.error(" Failed to move/copy/broadcast email for PO #" + poId, e);
                         }
                     });
                 }

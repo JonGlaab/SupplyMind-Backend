@@ -12,4 +12,3 @@ public interface PaymentService {
     PaymentDTO getPayment(Long paymentId);
 
 }
-

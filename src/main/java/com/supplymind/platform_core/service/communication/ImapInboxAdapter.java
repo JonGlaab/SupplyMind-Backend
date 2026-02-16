@@ -29,7 +29,6 @@ public class ImapInboxAdapter implements InboxProvider {
 
     private static final String IMAP_HOST = "imap.gmail.com";
 
-    // ✅ NEW: Increased scan depth to catch older emails (Backlog processing)
     private static final int SCAN_DEPTH = 500;
 
     private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]+>");
@@ -81,7 +80,6 @@ public class ImapInboxAdapter implements InboxProvider {
             fp.add(FetchProfile.Item.ENVELOPE);
             folder.fetch(messages, fp);
 
-            // Process latest first
             for (int i = messages.length - 1; i >= 0; i--) {
                 Message msg = messages[i];
                 try {

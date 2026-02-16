@@ -13,9 +13,7 @@ import com.supplymind.platform_core.repository.core.SupplierInvoiceRepository;
 import com.supplymind.platform_core.repository.core.SupplierPaymentRepository;
 import com.supplymind.platform_core.repository.core.SupplierRepository;
 import com.supplymind.platform_core.service.core.FinanceService;
-
 import org.springframework.transaction.annotation.Transactional;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -36,7 +34,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 
-
 @Service
 @RequiredArgsConstructor
 public class FinanceServiceImpl implements FinanceService {
@@ -46,7 +43,6 @@ public class FinanceServiceImpl implements FinanceService {
     private final PurchaseOrderRepository poRepo;
     private final SupplierInvoiceRepository supplierInvoiceRepo;
     private final SupplierRepository supplierRepository;
-
 
     @Value("${stripe.currency:cad}")
     private String defaultCurrency;
@@ -67,8 +63,6 @@ public class FinanceServiceImpl implements FinanceService {
                     "Cannot create invoice. PO status must be DELIVERED or COMPLETED. Current status: " + status
             );
         }
-
-
 
         invoiceRepo.findByPo_PoId(poId).ifPresent(existing -> {
             throw new IllegalStateException("Invoice already exists for PO: " + poId);
@@ -293,9 +287,6 @@ public class FinanceServiceImpl implements FinanceService {
                 .toList();
     }
 
-
-
-
     @Override
     @Transactional
     public Long scheduleSupplierPayment(ScheduleSupplierPaymentRequestDTO dto) {
@@ -391,5 +382,4 @@ public class FinanceServiceImpl implements FinanceService {
 
         supplierRepository.save(supplier);
     }
-
 }
