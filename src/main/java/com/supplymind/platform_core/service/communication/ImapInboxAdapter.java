@@ -73,7 +73,7 @@ public class ImapInboxAdapter implements InboxProvider {
 
             int count = folder.getMessageCount();
             if (count == 0) return result;
-            
+
             int start = Math.max(1, count - SCAN_DEPTH);
             Message[] messages = folder.getMessages(start, count);
 
