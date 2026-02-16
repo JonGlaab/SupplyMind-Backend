@@ -26,5 +26,4 @@ public interface InboxProvider {
      * Copies a message from one label to another.
      */
     void copyMessage(String messageId, String sourceLabel, String targetLabel);
-
 }

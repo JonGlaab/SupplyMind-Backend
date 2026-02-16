@@ -24,8 +24,6 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
 
-    // --- 1. CREATE NOTIFICATIONS ---
-
     /**
      * Notify a specific single user.
      */
@@ -69,8 +67,6 @@ public class NotificationService {
         notificationRepository.saveAll(notifications);
     }
 
-    // --- 2. READ NOTIFICATIONS ---
-
     public List<NotificationDTO> getUserNotifications(Long userId) {
         return notificationRepository.findByRecipientIdOrderByCreatedAtDesc(userId)
                 .stream()
@@ -93,7 +89,6 @@ public class NotificationService {
     @Transactional
     public void markAllAsRead(Long userId) {
         List<Notification> list = notificationRepository.findByRecipientIdOrderByCreatedAtDesc(userId);
-        // Only update the ones that are unread to save DB writes
         List<Notification> unread = list.stream().filter(n -> !n.isRead()).toList();
 
         if (!unread.isEmpty()) {
@@ -102,7 +97,6 @@ public class NotificationService {
         }
     }
 
-    // --- Helper: Map Entity to DTO ---
     private NotificationDTO mapToDTO(Notification n) {
         return NotificationDTO.builder()
                 .id(n.getId())

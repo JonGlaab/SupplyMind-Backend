@@ -16,4 +16,3 @@ public interface SupplierService {
 
     void delete(Long supplierId);
 }
-
