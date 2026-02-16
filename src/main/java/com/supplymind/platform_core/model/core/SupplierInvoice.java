@@ -31,6 +31,7 @@ public class SupplierInvoice {
     @JoinColumn(name = "po_id", nullable = false)
     private PurchaseOrder po;
 
+    @Builder.Default
     @Column(nullable = false)
     private String currency = "cad";
 
@@ -60,4 +61,45 @@ public class SupplierInvoice {
 
     @Column(name = "paid_at")
     private Instant paidAt;
+
+    @Column(name = "total_amount_cents", nullable = false)
+    private Long totalAmountCents;
+
+    @PrePersist
+    @PreUpdate
+    private void syncCents() {
+
+        if (totalAmount != null) {
+            this.totalAmountCents = totalAmount
+                    .movePointRight(2)
+                    .setScale(0, java.math.RoundingMode.HALF_UP)
+                    .longValueExact();
+        }
+
+        if (paidAmount != null) {
+            this.paidAmountCents = paidAmount
+                    .movePointRight(2)
+                    .setScale(0, java.math.RoundingMode.HALF_UP)
+                    .longValueExact();
+        }
+
+        if (remainingAmount != null) {
+            this.remainingAmountCents = remainingAmount
+                    .movePointRight(2)
+                    .setScale(0, java.math.RoundingMode.HALF_UP)
+                    .longValueExact();
+        }
+    }
+
+
+
+
+    @Column(name = "paid_amount_cents", nullable = false)
+    private Long paidAmountCents;
+
+    @Column(name = "remaining_amount_cents", nullable = false)
+    private Long remainingAmountCents;
+
+
+
 }
