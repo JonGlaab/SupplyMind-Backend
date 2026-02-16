@@ -6,6 +6,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 
@@ -38,8 +39,8 @@ public class SupplierInvoice {
     @Column(name = "total_amount", precision = 15, scale = 2, nullable = false)
     private BigDecimal totalAmount;
 
-    @Column(name = "paid_amount", precision = 15, scale = 2, nullable = false)
     @Builder.Default
+    @Column(name = "paid_amount", precision = 15, scale = 2, nullable = false)
     private BigDecimal paidAmount = BigDecimal.ZERO;
 
     @Column(name = "remaining_amount", precision = 15, scale = 2, nullable = false)
@@ -62,44 +63,37 @@ public class SupplierInvoice {
     @Column(name = "paid_at")
     private Instant paidAt;
 
+    // -------------------------
+    // CENTS (for Stripe / exact arithmetic)
+    // -------------------------
+
+    @Builder.Default
     @Column(name = "total_amount_cents", nullable = false)
-    private Long totalAmountCents;
+    private Long totalAmountCents = 0L;
+
+    @Builder.Default
+    @Column(name = "paid_amount_cents", nullable = false)
+    private Long paidAmountCents = 0L;
+
+    @Builder.Default
+    @Column(name = "remaining_amount_cents", nullable = false)
+    private Long remainingAmountCents = 0L;
 
     @PrePersist
     @PreUpdate
     private void syncCents() {
-
-        if (totalAmount != null) {
-            this.totalAmountCents = totalAmount
-                    .movePointRight(2)
-                    .setScale(0, java.math.RoundingMode.HALF_UP)
-                    .longValueExact();
-        }
-
-        if (paidAmount != null) {
-            this.paidAmountCents = paidAmount
-                    .movePointRight(2)
-                    .setScale(0, java.math.RoundingMode.HALF_UP)
-                    .longValueExact();
-        }
-
-        if (remainingAmount != null) {
-            this.remainingAmountCents = remainingAmount
-                    .movePointRight(2)
-                    .setScale(0, java.math.RoundingMode.HALF_UP)
-                    .longValueExact();
-        }
+        this.totalAmountCents = toCentsOrZero(totalAmount);
+        this.paidAmountCents = toCentsOrZero(paidAmount);
+        this.remainingAmountCents = toCentsOrZero(remainingAmount);
     }
 
+    private long toCentsOrZero(BigDecimal amount) {
+        if (amount == null) return 0L;
 
-
-
-    @Column(name = "paid_amount_cents", nullable = false)
-    private Long paidAmountCents;
-
-    @Column(name = "remaining_amount_cents", nullable = false)
-    private Long remainingAmountCents;
-
-
-
+        // 2 decimals -> cents
+        return amount
+                .movePointRight(2)
+                .setScale(0, RoundingMode.HALF_UP)
+                .longValue();
+    }
 }
