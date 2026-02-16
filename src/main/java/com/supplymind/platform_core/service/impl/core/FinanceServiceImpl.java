@@ -32,6 +32,9 @@ import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
 import com.stripe.net.RequestOptions;
 import com.stripe.param.PaymentIntentCreateParams;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Instant;
 
 
 @Service
@@ -255,6 +258,7 @@ public class FinanceServiceImpl implements FinanceService {
     @Override
     @Transactional
     public Long scheduleSupplierPayment(ScheduleSupplierPaymentRequestDTO dto) {
+
         SupplierInvoice inv = invoiceRepo.findById(dto.getInvoiceId())
                 .orElseThrow(() -> new IllegalArgumentException("Invoice not found: " + dto.getInvoiceId()));
 
@@ -262,23 +266,38 @@ public class FinanceServiceImpl implements FinanceService {
             throw new IllegalStateException("Invoice must be APPROVED to schedule payment.");
         }
 
-        BigDecimal amountToPay = (dto.getAmount() == null) ? inv.getRemainingAmount() : dto.getAmount();
-
-        if (amountToPay == null || amountToPay.compareTo(BigDecimal.ZERO) <= 0)
-            throw new IllegalArgumentException("amount must be > 0");
-
-        if (amountToPay.compareTo(inv.getRemainingAmount()) > 0) {
-            amountToPay = inv.getRemainingAmount();
+        BigDecimal remaining = inv.getRemainingAmount();
+        if (remaining == null || remaining.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("Invoice remaining amount must be > 0.");
         }
+
+        BigDecimal amountToPay = (dto.getAmount() == null) ? remaining : dto.getAmount();
+
+        if (amountToPay == null || amountToPay.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("amount must be > 0");
+        }
+
+        // Cap to remaining amount
+        if (amountToPay.compareTo(remaining) > 0) {
+            amountToPay = remaining;
+        }
+
+        // Convert to cents (safe rounding)
+        long amountCents = amountToPay
+                .multiply(BigDecimal.valueOf(100))
+                .setScale(0, RoundingMode.HALF_UP)
+                .longValueExact();
 
         SupplierPayment sp = SupplierPayment.builder()
                 .invoice(inv)
                 .po(inv.getPo())
                 .supplier(inv.getSupplier())
                 .amount(amountToPay)
-                .currency(inv.getCurrency())
+                .amountCents(amountCents)
+                .currency(inv.getCurrency() == null ? "cad" : inv.getCurrency())
                 .status(SupplierPaymentStatus.SCHEDULED)
                 .scheduledFor(dto.getScheduledFor() == null ? Instant.now() : dto.getScheduledFor())
+                .retryCount(0)
                 .build();
 
         sp = supplierPaymentRepo.save(sp);
@@ -288,7 +307,6 @@ public class FinanceServiceImpl implements FinanceService {
 
         return sp.getSupplierPaymentId();
     }
-
     @Override
     public SupplierFinanceSummaryDTO getSupplierSummary(Long supplierId) {
         var invoices = invoiceRepo.findBySupplier_SupplierId(supplierId);
