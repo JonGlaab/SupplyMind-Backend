@@ -28,5 +28,5 @@ public interface FinanceService {
     List<SupplierPaymentTimelineItemDTO> getSupplierPaymentTimeline(Long supplierId);
 
 
-
+    public void demoEnable(Long supplierId);
 }

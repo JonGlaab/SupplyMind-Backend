@@ -5,11 +5,13 @@ import com.supplymind.platform_core.common.enums.SupplierInvoiceStatus;
 import com.supplymind.platform_core.common.enums.SupplierPaymentStatus;
 import com.supplymind.platform_core.dto.core.finance.*;
 import com.supplymind.platform_core.model.core.PurchaseOrder;
+import com.supplymind.platform_core.model.core.Supplier;
 import com.supplymind.platform_core.model.core.SupplierInvoice;
 import com.supplymind.platform_core.model.core.SupplierPayment;
 import com.supplymind.platform_core.repository.core.PurchaseOrderRepository;
 import com.supplymind.platform_core.repository.core.SupplierInvoiceRepository;
 import com.supplymind.platform_core.repository.core.SupplierPaymentRepository;
+import com.supplymind.platform_core.repository.core.SupplierRepository;
 import com.supplymind.platform_core.service.core.FinanceService;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +42,7 @@ public class FinanceServiceImpl implements FinanceService {
     private final SupplierPaymentRepository supplierPaymentRepo;
     private final PurchaseOrderRepository poRepo;
     private final SupplierInvoiceRepository supplierInvoiceRepo;
+    private final SupplierRepository supplierRepository;
 
 
     @Value("${stripe.currency:cad}")
@@ -310,4 +313,24 @@ public class FinanceServiceImpl implements FinanceService {
 
         return new SupplierFinanceSummaryDTO(supplierId, totalPaid, pending, overdue, avgDelay, invoices.size());
     }
+
+    @Transactional
+    public void demoEnable(Long supplierId) {
+
+        Supplier supplier = supplierRepository.findById(supplierId)
+                .orElseThrow(() -> new IllegalArgumentException("Supplier not found"));
+
+        // if already enabled → do nothing
+        if (supplier.getStripeConnectedAccountId() != null) {
+            return;
+        }
+
+        // create fake Stripe Connect account for demo
+        String fakeAccountId = "acct_demo_" + supplierId + "_" + System.currentTimeMillis();
+
+        supplier.setStripeConnectedAccountId(fakeAccountId);
+
+        supplierRepository.save(supplier);
+    }
+
 }

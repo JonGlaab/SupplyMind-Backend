@@ -6,6 +6,7 @@ import com.supplymind.platform_core.model.core.SupplierInvoice;
 import com.supplymind.platform_core.model.core.SupplierPayment;
 import com.supplymind.platform_core.service.core.FinanceService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -64,6 +65,13 @@ public class FinanceController {
     @GetMapping("/invoices/by-po/{poId}")
     public InvoiceByPoResponseDTO invoiceByPo(@PathVariable Long poId) {
         return financeService.getInvoiceByPoId(poId);
+    }
+    @PostMapping("/suppliers/{supplierId}/demo-enable")
+    public ResponseEntity<Void> demoEnable(@PathVariable Long supplierId) {
+
+        financeService.demoEnable(supplierId);
+
+        return ResponseEntity.ok().build();
     }
 
 
