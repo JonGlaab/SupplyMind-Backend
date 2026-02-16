@@ -202,8 +202,21 @@ public class FinanceServiceImpl implements FinanceService {
                     PaymentIntentCreateParams.builder()
                             .setAmount(amountCents)
                             .setCurrency(defaultCurrency.toLowerCase())
+
+                            // ✅ IMPORTANT FIX: prevent redirect-based PMs → no return_url needed
+                            .setAutomaticPaymentMethods(
+                                    PaymentIntentCreateParams.AutomaticPaymentMethods.builder()
+                                            .setEnabled(true)
+                                            .setAllowRedirects(
+                                                    PaymentIntentCreateParams.AutomaticPaymentMethods.AllowRedirects.NEVER
+                                            )
+                                            .build()
+                            )
+
+                            // ✅ test payment method + confirm now
                             .setPaymentMethod(testPaymentMethod)
                             .setConfirm(true)
+
                             .setDescription("Supplier payment #" + sp.getSupplierPaymentId())
                             .putMetadata("supplierPaymentId", String.valueOf(sp.getSupplierPaymentId()))
                             .putMetadata("invoiceId", String.valueOf(invoice.getInvoiceId()))
@@ -233,7 +246,7 @@ public class FinanceServiceImpl implements FinanceService {
                     invoice.setStatus(SupplierInvoiceStatus.PARTIALLY_PAID);
                 }
 
-                // ✅ IMPORTANT: save invoice so @PreUpdate recalculates remaining
+                // ✅ remainingAmount is recomputed by @PreUpdate / normalizeAndSync
                 supplierInvoiceRepo.save(invoice);
 
                 return ExecutePaymentResponseDTO.builder()
@@ -244,7 +257,7 @@ public class FinanceServiceImpl implements FinanceService {
                         .build();
             }
 
-            // not succeeded
+            // If Stripe returns processing / requires_action (rare here), keep PROCESSING
             supplierPaymentRepo.save(sp);
 
             return ExecutePaymentResponseDTO.builder()
