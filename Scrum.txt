@@ -371,3 +371,26 @@ Elizabeth
     What will I do today? Ability for manager to upload a signature and be able to apply it to PO
     before emailing to the supplier. Verify that signature is being stored in blob storage.
     What impediments are blocking me?
+
+2026-02-16
+  Minh
+    What did I do yesterday? Changed the AI model.
+    What will I do today? Debugging AI email monitoring.
+    What impediments are blocking me? AI not changing PO delivery status.
+
+  Fatemeh
+    What did I do yesterday? Finishing Finance dashboard.
+    What will I do today? Working on finishing the finance dashboard.
+    What impediments are blocking me?
+
+  Jonathan
+    What did I do yesterday? Look at manager lag, make sure every link works as intended
+    What will I do today? Go through classes to see if there are still empty ones and delete them.
+    What impediments are blocking me?
+
+  Elizabeth
+    What did I do yesterday? Ability for manager to upload a signature and be able to apply it to
+    PO.
+    What will I do today? Go through website and see if any more alerts to change to
+    toast. Power-point outline.
+    What impediments are blocking me?
