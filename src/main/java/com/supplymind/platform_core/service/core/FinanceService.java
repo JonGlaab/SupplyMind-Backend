@@ -17,15 +17,17 @@ public interface FinanceService {
 
     SupplierFinanceSummaryDTO getSupplierSummary(Long supplierId);
 
-    SupplierInvoice getInvoiceByPoId(Long poId);
+    InvoiceByPoResponseDTO getInvoiceByPoId(Long poId);
+
     List<FinanceReadyPoDTO> getReadyPos();
 
-    void executePayment(Long supplierPaymentId);
+    public ExecutePaymentResponseDTO executePayment(Long supplierPaymentId);
+
 
     List<SupplierPayment> getPaymentsByInvoice(Long invoiceId);
 
     List<SupplierPaymentTimelineItemDTO> getSupplierPaymentTimeline(Long supplierId);
 
 
-
+    public void demoEnable(Long supplierId);
 }

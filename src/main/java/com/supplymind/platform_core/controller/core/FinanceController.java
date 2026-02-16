@@ -6,6 +6,7 @@ import com.supplymind.platform_core.model.core.SupplierInvoice;
 import com.supplymind.platform_core.model.core.SupplierPayment;
 import com.supplymind.platform_core.service.core.FinanceService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,9 +24,25 @@ public class FinanceController {
     }
 
     @PostMapping("/payments/{supplierPaymentId}/execute")
-    public void executePayment(@PathVariable Long supplierPaymentId) {
-        financeService.executePayment(supplierPaymentId);
+    public ResponseEntity<ExecutePaymentResponseDTO> executePayment(
+            @PathVariable Long supplierPaymentId) {
+
+        ExecutePaymentResponseDTO response =
+                financeService.executePayment(supplierPaymentId);
+
+        if ("PAID".equals(response.getStatus())) {
+
+            return ResponseEntity.ok(response);
+        }
+
+        if ("PROCESSING".equals(response.getStatus())) {
+
+            return ResponseEntity.accepted().body(response);
+        }
+
+        return ResponseEntity.badRequest().body(response);
     }
+
 
     @GetMapping("/invoices/{invoiceId}/payments")
     public List<SupplierPayment> invoicePayments(@PathVariable Long invoiceId) {
@@ -59,9 +76,19 @@ public class FinanceController {
         return financeService.getReadyPos();
     }
 
+
+
     @GetMapping("/invoices/by-po/{poId}")
-    public SupplierInvoice invoiceByPo(@PathVariable Long poId) {
+    public InvoiceByPoResponseDTO invoiceByPo(@PathVariable Long poId) {
         return financeService.getInvoiceByPoId(poId);
     }
+    @PostMapping("/suppliers/{supplierId}/demo-enable")
+    public ResponseEntity<Void> demoEnable(@PathVariable Long supplierId) {
+
+        financeService.demoEnable(supplierId);
+
+        return ResponseEntity.ok().build();
+    }
+
 
 }

@@ -37,14 +37,22 @@ public class SupplierPayment {
     @Column(name = "stripe_payment_intent_id")
     private String stripePaymentIntentId;
 
-    @Column(nullable = false, precision = 15, scale = 2)
+    // If you also store a charge id in DB:
+    @Column(name = "stripe_charge_id")
+    private String stripeChargeId;
+
+    @Column(name = "amount", nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
 
-    @Column(nullable = false)
+    @Column(name = "amount_cents", nullable = false)
+    private Long amountCents;
+
+    @Builder.Default
+    @Column(name = "currency", nullable = false)
     private String currency = "cad";
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private SupplierPaymentStatus status;
 
     @Column(name = "scheduled_for")
@@ -69,5 +77,4 @@ public class SupplierPayment {
 
     @Column(name = "executed_at")
     private Instant executedAt;
-
 }
