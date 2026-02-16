@@ -3,6 +3,7 @@ package com.supplymind.platform_core.controller.communication;
 import com.supplymind.platform_core.dto.communication.InboxConversation;
 import com.supplymind.platform_core.dto.core.purchaseorder.InboxMessage;
 import com.supplymind.platform_core.service.communication.InboxService;
+import com.supplymind.platform_core.service.intel.AiStatusScanner;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -13,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/core/inbox")
@@ -20,6 +22,7 @@ import java.util.List;
 public class InboxController {
 
     private final InboxService inboxService;
+    private final AiStatusScanner aiScanner;
 
     /**
      * Get List of Conversations (Sidebar)
@@ -39,6 +42,12 @@ public class InboxController {
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
     public ResponseEntity<List<InboxMessage>> getPoChat(@PathVariable Long poId) {
         return ResponseEntity.ok(inboxService.getPoChat(poId));
+    }
+    @PostMapping("/test-ai")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
+    public ResponseEntity<AiStatusScanner.StatusScanResult> testAi(@RequestBody Map<String, String> payload) {
+        String emailBody = payload.get("text");
+        return ResponseEntity.ok(aiScanner.scanEmailForStatus(emailBody));
     }
 
     /**
