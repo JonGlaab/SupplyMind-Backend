@@ -36,6 +36,7 @@ public class SupplierInvoice {
     @Column(nullable = false)
     private String currency = "cad";
 
+    // ---- DECIMAL AMOUNTS ----
     @Column(name = "total_amount", precision = 15, scale = 2, nullable = false)
     private BigDecimal totalAmount;
 
@@ -63,10 +64,7 @@ public class SupplierInvoice {
     @Column(name = "paid_at")
     private Instant paidAt;
 
-    // -------------------------
-    // CENTS (for Stripe / exact arithmetic)
-    // -------------------------
-
+    // ---- CENTS (Stripe-safe) ----
     @Builder.Default
     @Column(name = "total_amount_cents", nullable = false)
     private Long totalAmountCents = 0L;
@@ -81,18 +79,27 @@ public class SupplierInvoice {
 
     @PrePersist
     @PreUpdate
-    private void syncCents() {
-        this.totalAmountCents = toCentsOrZero(totalAmount);
-        this.paidAmountCents = toCentsOrZero(paidAmount);
-        this.remainingAmountCents = toCentsOrZero(remainingAmount);
+    private void normalizeAndSync() {
+
+        if (paidAmount == null) paidAmount = BigDecimal.ZERO;
+
+        // If remainingAmount not set, calculate it
+        if (totalAmount != null && remainingAmount == null) {
+            remainingAmount = totalAmount.subtract(paidAmount);
+        }
+
+        // Extra safety (never null)
+        if (totalAmount == null) totalAmount = BigDecimal.ZERO;
+        if (remainingAmount == null) remainingAmount = BigDecimal.ZERO;
+
+        totalAmountCents = toCents(totalAmount);
+        paidAmountCents = toCents(paidAmount);
+        remainingAmountCents = toCents(remainingAmount);
     }
 
-    private long toCentsOrZero(BigDecimal amount) {
+    private long toCents(BigDecimal amount) {
         if (amount == null) return 0L;
-
-        // 2 decimals -> cents
-        return amount
-                .movePointRight(2)
+        return amount.movePointRight(2)
                 .setScale(0, RoundingMode.HALF_UP)
                 .longValue();
     }
