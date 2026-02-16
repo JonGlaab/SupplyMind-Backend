@@ -21,7 +21,8 @@ public interface FinanceService {
 
     List<FinanceReadyPoDTO> getReadyPos();
 
-    void executePayment(Long supplierPaymentId);
+    public ExecutePaymentResponseDTO executePayment(Long supplierPaymentId);
+
 
     List<SupplierPayment> getPaymentsByInvoice(Long invoiceId);
 

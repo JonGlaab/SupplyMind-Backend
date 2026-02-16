@@ -24,9 +24,25 @@ public class FinanceController {
     }
 
     @PostMapping("/payments/{supplierPaymentId}/execute")
-    public void executePayment(@PathVariable Long supplierPaymentId) {
-        financeService.executePayment(supplierPaymentId);
+    public ResponseEntity<ExecutePaymentResponseDTO> executePayment(
+            @PathVariable Long supplierPaymentId) {
+
+        ExecutePaymentResponseDTO response =
+                financeService.executePayment(supplierPaymentId);
+
+        if ("PAID".equals(response.getStatus())) {
+
+            return ResponseEntity.ok(response);
+        }
+
+        if ("PROCESSING".equals(response.getStatus())) {
+
+            return ResponseEntity.accepted().body(response);
+        }
+
+        return ResponseEntity.badRequest().body(response);
     }
+
 
     @GetMapping("/invoices/{invoiceId}/payments")
     public List<SupplierPayment> invoicePayments(@PathVariable Long invoiceId) {
