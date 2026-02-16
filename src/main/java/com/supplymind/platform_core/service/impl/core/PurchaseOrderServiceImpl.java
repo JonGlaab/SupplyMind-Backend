@@ -377,33 +377,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             throw new BadRequestException("Cannot change status for a " + current + " PO.");
         }
 
-        if (next == PurchaseOrderStatus.DELAY_EXPECTED) {
-            if (!(current == PurchaseOrderStatus.CONFIRMED || current == PurchaseOrderStatus.SHIPPED)) {
-                throw new BadRequestException("DELAY_EXPECTED can only be set after CONFIRMED or SHIPPED.");
-            }
-            po.setStatus(PurchaseOrderStatus.DELAY_EXPECTED);
-            return toResponse(po, itemRepo.findAllByPo_PoId(poId));
-        }
-
-        boolean ok = switch (current) {
-            case DRAFT -> next == PurchaseOrderStatus.PENDING_APPROVAL; // use /submit normally
-            case PENDING_APPROVAL -> next == PurchaseOrderStatus.APPROVED; // use /approve normally
-            case APPROVED -> next == PurchaseOrderStatus.EMAIL_SENT;
-            case EMAIL_SENT -> next == PurchaseOrderStatus.SUPPLIER_REPLIED;
-            case SUPPLIER_REPLIED -> next == PurchaseOrderStatus.CONFIRMED;
-            case CONFIRMED -> next == PurchaseOrderStatus.SHIPPED;
-            case SHIPPED -> next == PurchaseOrderStatus.DELIVERED;
-            case DELIVERED -> next == PurchaseOrderStatus.COMPLETED;
-            case DELAY_EXPECTED -> next == PurchaseOrderStatus.SHIPPED || next == PurchaseOrderStatus.DELIVERED;
-            default -> false;
-        };
-
-        if (!ok) {
-            throw new BadRequestException("Invalid status transition: " + current + " -> " + next);
-        }
-
-        // If moving to APPROVED, generate PDF
-        if (next == PurchaseOrderStatus.APPROVED) {
+        // If moving to APPROVED, and it's not already approved, generate PDF
+        if (next == PurchaseOrderStatus.APPROVED && po.getApprover() == null) {
             User approver = authService.getCurrentUser()
                     .orElseThrow(() -> new BadRequestException("Could not identify current user to set as approver."));
             po.setApprover(approver);
