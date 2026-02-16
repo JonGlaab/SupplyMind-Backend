@@ -6,6 +6,7 @@ import com.supplymind.platform_core.model.core.SupplierInvoice;
 import com.supplymind.platform_core.model.core.SupplierPayment;
 import com.supplymind.platform_core.service.core.FinanceService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,30 +19,28 @@ public class FinanceController {
 
     private final FinanceService financeService;
 
+
     @PostMapping("/invoices/from-po/{poId}")
     public CreateInvoiceFromPoResponseDTO createInvoiceFromPo(@PathVariable Long poId) {
         return financeService.createInvoiceFromPo(poId);
     }
 
     @PostMapping("/payments/{supplierPaymentId}/execute")
-    public ResponseEntity<ExecutePaymentResponseDTO> executePayment(
-            @PathVariable Long supplierPaymentId) {
+    public ResponseEntity<ExecutePaymentResponseDTO> executePayment(@PathVariable Long supplierPaymentId) {
 
-        ExecutePaymentResponseDTO response =
-                financeService.executePayment(supplierPaymentId);
+        ExecutePaymentResponseDTO res = financeService.executePayment(supplierPaymentId);
 
-        if ("PAID".equals(response.getStatus())) {
-
-            return ResponseEntity.ok(response);
+        if ("PROCESSING".equalsIgnoreCase(res.getStatus())) {
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(res); // 202
         }
 
-        if ("PROCESSING".equals(response.getStatus())) {
-
-            return ResponseEntity.accepted().body(response);
+        if ("FAILED".equalsIgnoreCase(res.getStatus())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(res); // 400
         }
 
-        return ResponseEntity.badRequest().body(response);
+        return ResponseEntity.ok(res); // 200 for PAID
     }
+
 
 
     @GetMapping("/invoices/{invoiceId}/payments")

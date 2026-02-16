@@ -81,26 +81,31 @@ public class SupplierInvoice {
     @PreUpdate
     private void normalizeAndSync() {
 
+        if (totalAmount == null) totalAmount = BigDecimal.ZERO;
         if (paidAmount == null) paidAmount = BigDecimal.ZERO;
 
-        // If remainingAmount not set, calculate it
-        if (totalAmount != null && remainingAmount == null) {
-            remainingAmount = totalAmount.subtract(paidAmount);
-        }
+        remainingAmount = totalAmount.subtract(paidAmount);
 
-        // Extra safety (never null)
-        if (totalAmount == null) totalAmount = BigDecimal.ZERO;
-        if (remainingAmount == null) remainingAmount = BigDecimal.ZERO;
+        if (remainingAmount.compareTo(BigDecimal.ZERO) < 0) {
+            remainingAmount = BigDecimal.ZERO;
+        }
 
         totalAmountCents = toCents(totalAmount);
         paidAmountCents = toCents(paidAmount);
         remainingAmountCents = toCents(remainingAmount);
     }
 
-    private long toCents(BigDecimal amount) {
-        if (amount == null) return 0L;
-        return amount.movePointRight(2)
+
+    private Long toCents(BigDecimal amount) {
+
+        if (amount == null) {
+            return 0L;
+        }
+
+        return amount
+                .multiply(BigDecimal.valueOf(100))
                 .setScale(0, RoundingMode.HALF_UP)
                 .longValue();
     }
+
 }

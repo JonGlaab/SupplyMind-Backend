@@ -159,43 +159,54 @@ public class FinanceServiceImpl implements FinanceService {
         invoiceRepo.save(inv);
     }
 
+    @Value("${app.demoPayments:true}")
+    private boolean demoPayments;
+
     @Override
     @Transactional
     public ExecutePaymentResponseDTO executePayment(Long supplierPaymentId) {
 
         SupplierPayment sp = supplierPaymentRepo.findById(supplierPaymentId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "SupplierPayment not found: " + supplierPaymentId));
+                .orElseThrow(() -> new IllegalArgumentException("SupplierPayment not found: " + supplierPaymentId));
 
         if (sp.getStatus() != SupplierPaymentStatus.SCHEDULED &&
                 sp.getStatus() != SupplierPaymentStatus.PROCESSING) {
-
-            throw new IllegalStateException(
-                    "Payment must be SCHEDULED or PROCESSING to execute.");
+            throw new IllegalStateException("Payment must be SCHEDULED or PROCESSING to execute.");
         }
 
         SupplierInvoice invoice = sp.getInvoice();
-        PurchaseOrder po = invoice.getPo();
+
+        if (invoice.getPaidAmount() == null) {
+            invoice.setPaidAmount(BigDecimal.ZERO);
+        }
+        if (invoice.getTotalAmount() == null) {
+            throw new IllegalStateException("Invoice totalAmount is null");
+        }
 
         BigDecimal amount = sp.getAmount();
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("Payment amount must be > 0");
+        }
 
-        long amountCents = amount.movePointRight(2).longValueExact();
+        long amountCents = amount.multiply(BigDecimal.valueOf(100))
+                .setScale(0, RoundingMode.HALF_UP)
+                .longValueExact();
 
         try {
-
             sp.setStatus(SupplierPaymentStatus.PROCESSING);
             supplierPaymentRepo.save(sp);
+
+            String testPaymentMethod = "pm_card_visa";
 
             PaymentIntentCreateParams params =
                     PaymentIntentCreateParams.builder()
                             .setAmount(amountCents)
-                            .setCurrency("cad")
-                            .putMetadata("supplierPaymentId",
-                                    String.valueOf(sp.getSupplierPaymentId()))
-                            .putMetadata("invoiceId",
-                                    String.valueOf(invoice.getInvoiceId()))
-                            .putMetadata("poId",
-                                    String.valueOf(po.getPoId()))
+                            .setCurrency(defaultCurrency.toLowerCase())
+                            .setPaymentMethod(testPaymentMethod)
+                            .setConfirm(true)
+                            .setDescription("Supplier payment #" + sp.getSupplierPaymentId())
+                            .putMetadata("supplierPaymentId", String.valueOf(sp.getSupplierPaymentId()))
+                            .putMetadata("invoiceId", String.valueOf(invoice.getInvoiceId()))
                             .build();
 
             RequestOptions opts = RequestOptions.builder()
@@ -210,53 +221,53 @@ public class FinanceServiceImpl implements FinanceService {
 
                 sp.setStatus(SupplierPaymentStatus.PAID);
                 sp.setExecutedAt(Instant.now());
+                supplierPaymentRepo.save(sp);
 
-                BigDecimal paid =
-                        invoice.getPaidAmount().add(amount);
+                BigDecimal newPaid = invoice.getPaidAmount().add(amount);
+                invoice.setPaidAmount(newPaid);
 
-                invoice.setPaidAmount(paid);
-
-                if (paid.compareTo(invoice.getTotalAmount()) >= 0) {
+                if (newPaid.compareTo(invoice.getTotalAmount()) >= 0) {
                     invoice.setStatus(SupplierInvoiceStatus.PAID);
+                    invoice.setPaidAt(Instant.now());
                 } else {
                     invoice.setStatus(SupplierInvoiceStatus.PARTIALLY_PAID);
                 }
 
+                // ✅ IMPORTANT: save invoice so @PreUpdate recalculates remaining
                 supplierInvoiceRepo.save(invoice);
-
-                supplierPaymentRepo.save(sp);
 
                 return ExecutePaymentResponseDTO.builder()
                         .supplierPaymentId(sp.getSupplierPaymentId())
                         .status("PAID")
                         .stripePaymentIntentId(pi.getId())
-                        .message("Payment completed successfully")
+                        .message("Payment succeeded")
                         .build();
             }
 
+            // not succeeded
             supplierPaymentRepo.save(sp);
 
             return ExecutePaymentResponseDTO.builder()
                     .supplierPaymentId(sp.getSupplierPaymentId())
                     .status("PROCESSING")
                     .stripePaymentIntentId(pi.getId())
-                    .message("Payment is processing in Stripe")
+                    .message("Stripe status: " + pi.getStatus())
                     .build();
 
         } catch (StripeException e) {
 
             sp.setStatus(SupplierPaymentStatus.FAILED);
             sp.setFailureReason(e.getMessage());
-
             supplierPaymentRepo.save(sp);
 
             return ExecutePaymentResponseDTO.builder()
                     .supplierPaymentId(sp.getSupplierPaymentId())
                     .status("FAILED")
-                    .message(e.getMessage())
+                    .message("Stripe failed: " + e.getMessage())
                     .build();
         }
     }
+
 
 
     @Override
