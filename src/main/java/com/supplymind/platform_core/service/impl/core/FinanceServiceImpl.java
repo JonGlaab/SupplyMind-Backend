@@ -15,6 +15,8 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import com.supplymind.platform_core.dto.core.finance.FinanceReadyPoDTO;
+import com.supplymind.platform_core.common.enums.PurchaseOrderStatus;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -91,14 +93,27 @@ public class FinanceServiceImpl implements FinanceService {
         );
     }
 
-    public List<PurchaseOrder> getReadyPos() {
-        return poRepo.findAllReadyForFinance(
-                List.of(
-                        PurchaseOrderStatus.DELIVERED,
-                        PurchaseOrderStatus.COMPLETED
-                )
+    @Override
+    public List<FinanceReadyPoDTO> getReadyPos() {
+
+        var statuses = java.util.List.of(
+                PurchaseOrderStatus.DELIVERED,
+                PurchaseOrderStatus.COMPLETED
         );
+
+        return poRepo.findByStatusIn(statuses).stream()
+                .map(po -> FinanceReadyPoDTO.builder()
+                        .poId(po.getPoId())
+                        .status(po.getStatus().name())
+                        .totalAmount(po.getTotalAmount())
+                        .supplierId(po.getSupplier() != null ? po.getSupplier().getSupplierId() : null)
+                        .supplierName(po.getSupplier() != null ? po.getSupplier().getName() : null)
+                        .warehouseId(po.getWarehouse() != null ? po.getWarehouse().getWarehouseId() : null)
+                        .warehouseName(po.getWarehouse() != null ? po.getWarehouse().getLocationName() : null)
+                        .build())
+                .toList();
     }
+
 
     public SupplierInvoice getInvoiceByPoId(Long poId) {
         return invoiceRepo.findByPo_PoId(poId).orElse(null);

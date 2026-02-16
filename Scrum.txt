@@ -352,21 +352,22 @@ Elizabeth
 
 2026-02-14
   Minh
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? Testing and troubleshooting
+    What will I do today? Debugging AI email monitoring. Have to change the model.
     What impediments are blocking me?
 
   Fatemeh
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? finance flow testing
+    What will I do today? Continuing to test and debug the financial dashboard.
     What impediments are blocking me?
 
   Jonathan
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? Look at manager lag, make sure every link works as intended
+    What will I do today? Making sure transfers work correctly and update inventory.
     What impediments are blocking me?
 
   Elizabeth
-    What did I do yesterday?
-    What will I do today?
+    What did I do yesterday? tested PO process and bug hunting, PO dashboard fixes
+    What will I do today? Ability for manager to upload a signature and be able to apply it to PO
+    before emailing to the supplier. Verify that signature is being stored in blob storage.
     What impediments are blocking me?

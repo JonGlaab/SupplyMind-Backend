@@ -85,4 +85,7 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
             "LEFT JOIN FETCH i.product " +
             "WHERE p.poId = :id")
     Optional<PurchaseOrder> findByIdWithItems(@Param("id") Long id);
+
+    List<PurchaseOrder> findByStatusIn(List<PurchaseOrderStatus> statuses);
+
 }

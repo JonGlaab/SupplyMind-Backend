@@ -55,7 +55,7 @@ public class FinanceController {
     }
 
     @GetMapping("/po/ready")
-    public List<PurchaseOrder> readyPos() {
+    public List<FinanceReadyPoDTO> readyPos() {
         return financeService.getReadyPos();
     }
 

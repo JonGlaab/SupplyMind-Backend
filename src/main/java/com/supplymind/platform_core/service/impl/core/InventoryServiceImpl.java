@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -147,10 +149,10 @@ public class InventoryServiceImpl implements InventoryService {
     private InventoryResponse toResponse(Inventory inv) {
         Product p = inv.getProduct();
 
-        Supplier supplier = p.getSupplierProducts().stream()
-                .findFirst()
-                .map(SupplierProduct::getSupplier)
-                .orElse(null);
+        Supplier supplier = null;
+        if (p.getSupplierProducts() != null && !p.getSupplierProducts().isEmpty()) {
+            supplier = p.getSupplierProducts().iterator().next().getSupplier();
+        }
 
         return new InventoryResponse(
                 inv.getInventoryId(),
@@ -170,17 +172,21 @@ public class InventoryServiceImpl implements InventoryService {
         );
     }
 
+    @Override
     @Transactional
     public void executeImmediateTransfer(InventoryTransferRequest req) {
-        Inventory source = inventoryRepo.findByWarehouse_WarehouseIdAndProduct_ProductId(
+        LocalDateTime now = LocalDateTime.now();
+
+        Inventory sourceInv = inventoryRepo.findByWarehouse_WarehouseIdAndProduct_ProductId(
                         req.fromWarehouseId(), req.productId())
                 .orElseThrow(() -> new EntityNotFoundException("Product not found in source warehouse"));
 
-        if (source.getQtyOnHand() < req.quantity()) {
-            throw new IllegalArgumentException("Insufficient stock. Source has " + source.getQtyOnHand());
+        if (sourceInv.getQtyOnHand() < req.quantity()) {
+            throw new BadRequestException("Insufficient stock in source warehouse. Available: "
+                    + sourceInv.getQtyOnHand() + ", Requested: " + req.quantity());
         }
 
-        Inventory destination = inventoryRepo.findByWarehouse_WarehouseIdAndProduct_ProductId(
+        Inventory destInv = inventoryRepo.findByWarehouse_WarehouseIdAndProduct_ProductId(
                         req.toWarehouseId(), req.productId())
                 .orElseGet(() -> {
                     Inventory newInv = new Inventory();
@@ -190,20 +196,26 @@ public class InventoryServiceImpl implements InventoryService {
                     return newInv;
                 });
 
-        source.setQtyOnHand(source.getQtyOnHand() - req.quantity());
-        destination.setQtyOnHand(destination.getQtyOnHand() + req.quantity());
+        sourceInv.setQtyOnHand(sourceInv.getQtyOnHand() - req.quantity());
+        destInv.setQtyOnHand(destInv.getQtyOnHand() + req.quantity());
 
-        inventoryRepo.save(source);
-        inventoryRepo.save(destination);
+        inventoryRepo.save(sourceInv);
+        inventoryRepo.save(destInv);
 
-        // 6. Record the audit trail (Optional but recommended)
-        //createTransferLogs(req);
+        saveTransaction(req.fromWarehouseId(), req.productId(), req.quantity(), InventoryTransactionType.OUT);
+        saveTransaction(req.toWarehouseId(), req.productId(), req.quantity(), InventoryTransactionType.IN);
+
+        txRepo.flush();
     }
 
-//    private void createTransferLogs(InventoryTransferRequest req) {
-//        // You can use your txRepo here to create TWO entries:
-//        // one for TRANSFER_OUT (Source) and one for TRANSFER_IN (Destination)
-//    }
+    private void saveTransaction(Long whId, Long prodId, Integer qty, InventoryTransactionType type) {
+        txRepo.save(InventoryTransaction.builder()
+                .warehouse(warehouseRepo.getReferenceById(whId))
+                .product(productRepo.getReferenceById(prodId))
+                .quantity(qty)
+                .type(type)
+                .build());
+    }
 
     @Override
     public Page<InventorySlimResponse> listByWarehouse(Long warehouseId, String sku, Pageable pageable) {
