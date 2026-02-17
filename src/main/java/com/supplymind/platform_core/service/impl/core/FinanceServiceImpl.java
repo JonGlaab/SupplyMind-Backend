@@ -318,9 +318,12 @@ public class FinanceServiceImpl implements FinanceService {
         SupplierInvoice inv = invoiceRepo.findById(dto.getInvoiceId())
                 .orElseThrow(() -> new IllegalArgumentException("Invoice not found: " + dto.getInvoiceId()));
 
-        if (inv.getStatus() != SupplierInvoiceStatus.APPROVED && inv.getStatus() != SupplierInvoiceStatus.SCHEDULED) {
-            throw new IllegalStateException("Invoice must be APPROVED to schedule payment.");
+        if (inv.getStatus() != SupplierInvoiceStatus.APPROVED
+                && inv.getStatus() != SupplierInvoiceStatus.SCHEDULED
+                && inv.getStatus() != SupplierInvoiceStatus.PARTIALLY_PAID) {
+            throw new IllegalStateException("Invoice must be APPROVED, SCHEDULED, or PARTIALLY_PAID to schedule payment.");
         }
+
 
         BigDecimal remaining = inv.getRemainingAmount();
         if (remaining == null || remaining.compareTo(BigDecimal.ZERO) <= 0) {
