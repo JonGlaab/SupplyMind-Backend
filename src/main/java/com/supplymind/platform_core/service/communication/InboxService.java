@@ -77,7 +77,7 @@ public class InboxService {
 
         List<InboxMessage> messages = inboxProvider.fetchMessages(labelId);
 
-        
+
         messages.sort(Comparator.comparingLong(InboxMessage::getTimestamp));
 
         return messages;
