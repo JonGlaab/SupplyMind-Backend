@@ -30,4 +30,8 @@ public interface FinanceService {
 
 
     public void demoEnable(Long supplierId);
+
+    CreatePaymentIntentResponseDTO createPaymentIntent(Long supplierPaymentId);
+
+    ExecutePaymentResponseDTO finalizePayment(Long supplierPaymentId);
 }

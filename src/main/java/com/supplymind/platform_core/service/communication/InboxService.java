@@ -1,6 +1,5 @@
 package com.supplymind.platform_core.service.communication;
 
-import com.supplymind.platform_core.common.enums.PurchaseOrderStatus;
 import com.supplymind.platform_core.dto.communication.InboxConversation;
 import com.supplymind.platform_core.dto.core.purchaseorder.InboxMessage;
 import com.supplymind.platform_core.model.core.PurchaseOrder;
@@ -19,16 +18,20 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class InboxService {
 
-    private final InboxProvider inboxProvider;
+    private final ImapInboxAdapter inboxProvider;
     private final PurchaseOrderRepository poRepo;
 
+    /**
+     * Ensures the folder exists (e.g., "SupplyMind/PO-102")
+     */
     public void createInboxForPo(Long poId) {
         inboxProvider.getOrCreateLabel("SupplyMind/PO-" + poId);
     }
 
     /**
      * Fetches the list of active POs to display in the Inbox Sidebar.
-     * Uses the new InboxConversation DTO from the 'communication' package.
+     * Note: This comes from the Database, not Gmail.
+     * If a PO is missing here, it means it doesn't exist in the Prod Database.
      */
     @Transactional(readOnly = true)
     public List<InboxConversation> getConversations() {
@@ -57,20 +60,32 @@ public class InboxService {
 
     /**
      * Fetches the actual chat messages (Emails) for a specific PO.
+     * FIX: Looks specifically in 'SupplyMind/PO-{id}' instead of 'INBOX'.
+     * This solves the issue where Localhost moves the email and Prod can't find it.
      */
     @Transactional(readOnly = true)
     public List<InboxMessage> getPoChat(Long poId) {
         PurchaseOrder po = poRepo.findById(poId).orElse(null);
         if (po == null) return new ArrayList<>();
 
-        String labelId = inboxProvider.getOrCreateLabel("SupplyMind/PO-" + poId);
+
+        String targetLabel = "SupplyMind/PO-" + poId;
+
+
+        String labelId = inboxProvider.getOrCreateLabel(targetLabel);
+
+
         List<InboxMessage> messages = inboxProvider.fetchMessages(labelId);
+
 
         messages.sort(Comparator.comparingLong(InboxMessage::getTimestamp));
 
         return messages;
     }
 
+    /**
+     * Fetches attachment from the specific PO folder.
+     */
     public byte[] getAttachment(Long poId, String messageId, String fileName) {
         String labelId = "SupplyMind/PO-" + poId;
         return inboxProvider.fetchAttachment(labelId, messageId, fileName);

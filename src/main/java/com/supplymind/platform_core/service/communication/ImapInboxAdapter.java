@@ -29,7 +29,7 @@ public class ImapInboxAdapter implements InboxProvider {
 
     private static final String IMAP_HOST = "imap.gmail.com";
 
-    private static final int SCAN_DEPTH = 500;
+    private static final int SCAN_DEPTH = 2000;
 
     private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]+>");
     private static final Pattern REPLY_SPLIT_PATTERN = Pattern.compile(
