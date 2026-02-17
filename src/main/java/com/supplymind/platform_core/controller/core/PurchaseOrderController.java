@@ -34,7 +34,11 @@ import org.springframework.web.bind.annotation.*;
 import java.io.File;
 import java.security.Principal;
 
-
+/**
+ * REST controller for managing Purchase Orders.
+ * Provides endpoints for creating, retrieving, updating, and managing the lifecycle of POs.
+ * Access is restricted based on user roles.
+ */
 @RestController
 @RequestMapping("/api/core/purchase-orders")
 @RequiredArgsConstructor
@@ -50,7 +54,6 @@ public class PurchaseOrderController {
     private final PdfGenerationService pdfGenerationService;
     private final InboxService inboxService;
 
-
     // POST /api/core/purchase-orders - create draft
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -59,7 +62,14 @@ public class PurchaseOrderController {
         return service.createDraft(req);
     }
 
-    // GET /api/core/purchase-orders?status=&supplierId=&warehouseId=
+    /**
+     * Lists all Purchase Orders with optional filters and pagination.
+     * @param status Optional filter by PO status.
+     * @param supplierId Optional filter by supplier ID.
+     * @param warehouseId Optional filter by warehouse ID.
+     * @param pageable Pagination information.
+     * @return A paginated list of Purchase Orders.
+     */
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
     public Page<PurchaseOrderResponse> list(
@@ -71,14 +81,21 @@ public class PurchaseOrderController {
         return service.list(status, supplierId, warehouseId, pageable);
     }
 
-    // GET /api/core/purchase-orders/{poId}
+    /**
+     * Retrieves a single Purchase Order by its ID.
+     * @param poId The ID of the Purchase Order.
+     * @return The requested Purchase Order.
+     */
     @GetMapping("/{poId}")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
     public PurchaseOrderResponse get(@PathVariable Long poId) {
         return service.get(poId);
     }
 
-    // DELETE /api/core/purchase-orders/{poId}
+    /**
+     * Deletes a draft Purchase Order.
+     * @param poId The ID of the Purchase Order to delete.
+     */
     @DeleteMapping("/{poId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAnyRole('ADMIN','PROCUREMENT_OFFICER')")
@@ -86,7 +103,12 @@ public class PurchaseOrderController {
         service.delete(poId);
     }
 
-    // PATCH /api/core/purchase-orders/{poId} - edit header
+    /**
+     * Updates the header information of a draft Purchase Order.
+     * @param poId The ID of the Purchase Order.
+     * @param req The request body with updated data.
+     * @return The updated Purchase Order.
+     */
     @PatchMapping("/{poId}")
     @PreAuthorize("hasAnyRole('ADMIN','PROCUREMENT_OFFICER')")
     public PurchaseOrderResponse updateHeader(@PathVariable Long poId,
@@ -94,7 +116,12 @@ public class PurchaseOrderController {
         return service.updateHeader(poId, req);
     }
 
-    // POST /api/core/purchase-orders/{poId}/items
+    /**
+     * Adds an item to a draft Purchase Order.
+     * @param poId The ID of the Purchase Order.
+     * @param req The request body containing the new item's details.
+     * @return The newly added Purchase Order item.
+     */
     @PostMapping("/{poId}/items")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('ADMIN','PROCUREMENT_OFFICER')")
@@ -103,7 +130,13 @@ public class PurchaseOrderController {
         return service.addItem(poId, req);
     }
 
-    // PATCH /api/core/purchase-orders/{poId}/items/{itemId}
+    /**
+     * Updates an item on a draft Purchase Order.
+     * @param poId The ID of the Purchase Order.
+     * @param itemId The ID of the item to update.
+     * @param req The request body with updated item data.
+     * @return The updated Purchase Order item.
+     */
     @PatchMapping("/{poId}/items/{itemId}")
     @PreAuthorize("hasAnyRole('ADMIN','PROCUREMENT_OFFICER')")
     public PurchaseOrderItemResponse updateItem(@PathVariable Long poId,
@@ -112,7 +145,11 @@ public class PurchaseOrderController {
         return service.updateItem(poId, itemId, req);
     }
 
-    // DELETE /api/core/purchase-orders/{poId}/items/{itemId}
+    /**
+     * Removes an item from a draft Purchase Order.
+     * @param poId The ID of the Purchase Order.
+     * @param itemId The ID of the item to remove.
+     */
     @DeleteMapping("/{poId}/items/{itemId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAnyRole('ADMIN','PROCUREMENT_OFFICER')")
@@ -120,26 +157,43 @@ public class PurchaseOrderController {
         service.removeItem(poId, itemId);
     }
 
-    // POST /api/core/purchase-orders/{poId}/submit
+    /**
+     * Submits a draft Purchase Order for approval.
+     * @param poId The ID of the Purchase Order to submit.
+     * @return The submitted Purchase Order with status PENDING_APPROVAL.
+     */
     @PostMapping("/{poId}/submit")
     @PreAuthorize("hasAnyRole('ADMIN','PROCUREMENT_OFFICER')")
     public PurchaseOrderResponse submit(@PathVariable Long poId) {
         return service.submit(poId);
     }
 
-    // Change the return type here
+    /**
+     * Approves a Purchase Order that is pending approval.
+     * @param poId The ID of the Purchase Order to approve.
+     * @return The approved Purchase Order with status APPROVED.
+     */
     @PostMapping("/{poId}/approve")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public PurchaseOrderResponse approve(@PathVariable Long poId) { return service.approve(poId); }
 
-    // POST /api/core/purchase-orders/{poId}/cancel
+    /**
+     * Cancels a Purchase Order.
+     * @param poId The ID of the Purchase Order to cancel.
+     * @return The cancelled Purchase Order with status CANCELLED.
+     */
     @PostMapping("/{poId}/cancel")
     @PreAuthorize("hasAnyRole('ADMIN','PROCUREMENT_OFFICER')")
     public PurchaseOrderResponse cancel(@PathVariable Long poId) {
         return service.cancel(poId);
     }
 
-    // POST /api/core/purchase-orders/{poId}/status
+    /**
+     * Manually updates the status of a Purchase Order.
+     * @param poId The ID of the Purchase Order.
+     * @param req The request body containing the new status.
+     * @return The updated Purchase Order.
+     */
     @PostMapping("/{poId}/status")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
     public PurchaseOrderResponse updateStatus(
@@ -149,8 +203,12 @@ public class PurchaseOrderController {
         return service.updateStatus(poId, req);
     }
 
-
-    // POST /api/core/purchase-orders/{poId}/receive
+    /**
+     * Records the receipt of goods for a Purchase Order.
+     * @param poId The ID of the Purchase Order.
+     * @param req The request body containing details of the received items.
+     * @return The updated Purchase Order, likely with status COMPLETED.
+     */
     @PostMapping("/{poId}/receive")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
     public PurchaseOrderResponse receive(@PathVariable Long poId,
@@ -158,16 +216,22 @@ public class PurchaseOrderController {
         return service.receive(poId, req);
     }
 
-    // GET /api/core/purchase-orders/{poId}/receiving-status
+    /**
+     * Retrieves the receiving status of a Purchase Order, detailing ordered vs. received quantities.
+     * @param poId The ID of the Purchase Order.
+     * @return The receiving status details.
+     */
     @GetMapping("/{poId}/receiving-status")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
     public ReceivingStatusResponse receivingStatus(@PathVariable Long poId) {
         return service.receivingStatus(poId);
     }
 
-    //Email
     /**
-     * Frontend calls this to show the PDF Preview on the Right Side.
+     * Generates and returns a PDF preview of the Purchase Order.
+     * @param poId The ID of the Purchase Order.
+     * @param includeSignature Whether to include the approver's signature in the PDF.
+     * @return A response entity containing the PDF file.
      */
     @GetMapping("/{poId}/preview-pdf")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
@@ -196,7 +260,10 @@ public class PurchaseOrderController {
     }
 
     /**
-     * Frontend calls this to populate the "Left Side" Email Editor (AI Draft).
+     * Generates an AI-drafted email body for sending a Purchase Order to a supplier.
+     * @param poId The ID of the Purchase Order.
+     * @param principal The current authenticated user.
+     * @return A response entity containing the email subject, body, and recipient.
      */
     @GetMapping("/{poId}/email-draft")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
@@ -228,8 +295,10 @@ public class PurchaseOrderController {
     }
 
     /**
-     * Manager clicks "Confirm & Send".
-     * Accepts the FINAL body (edited by manager) and sends it.
+     * Sends the Purchase Order email to the supplier.
+     * @param poId The ID of the Purchase Order.
+     * @param request The request body containing the final email content and settings.
+     * @return A confirmation message.
      */
     @PostMapping("/{poId}/send")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','PROCUREMENT_OFFICER')")
@@ -256,7 +325,6 @@ public class PurchaseOrderController {
             }
 
             File pdfAttachment = pdfGenerationService.generatePurchaseOrderPdf(po, po.getApprover(), request.isAddSignature());
-
 
             emailProvider.sendEmail(
                     recipient,

@@ -28,6 +28,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+/**
+ * Service implementation for managing Purchase Orders.
+ * This class contains the core business logic for creating, updating,
+ * and processing purchase orders and their associated data.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -48,9 +53,12 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final PdfGenerationService pdfGenerationService;
     private final StorageService storageService;
 
-    // ----------------------------
-    // CREATE DRAFT
-    // ----------------------------
+    /**
+     * Creates a new Purchase Order in a DRAFT status.
+     *
+     * @param req The request object containing the supplier and warehouse IDs.
+     * @return A response object representing the newly created Purchase Order.
+     */
     @Override
     @Transactional
     public PurchaseOrderResponse createDraft(PurchaseOrderCreateRequest req) {
@@ -77,9 +85,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         return toResponse(po, List.of());
     }
 
-    // ----------------------------
-    // LIST WITH FILTERS
-    // ----------------------------
     @Override
     @Transactional(readOnly = true)
     public Page<PurchaseOrderResponse> list(PurchaseOrderStatus status, Long supplierId, Long warehouseId, Pageable pageable) {
@@ -110,9 +115,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         return new PageImpl<>(dtoList, pageable, page.getTotalElements());
     }
 
-    // ----------------------------
-    // GET DETAILS
-    // ----------------------------
     @Override
     @Transactional(readOnly = true)
     public PurchaseOrderResponse get(Long poId) {
@@ -132,9 +134,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         poRepo.delete(po);
     }
 
-    // ----------------------------
-    // UPDATE HEADER (DRAFT ONLY)
-    // ----------------------------
     @Override
     @Transactional
     public PurchaseOrderResponse updateHeader(Long poId, PurchaseOrderUpdateRequest req) {
@@ -160,9 +159,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         return toResponse(po, items);
     }
 
-    // ----------------------------
-    // ADD ITEM (DRAFT ONLY)
-    // ----------------------------
     @Override
     @Transactional
     public PurchaseOrderItemResponse addItem(Long poId, PurchaseOrderItemCreateRequest req) {
@@ -188,9 +184,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         return toItemResponse(saved);
     }
 
-    // ----------------------------
-    // UPDATE ITEM (DRAFT ONLY)
-    // ----------------------------
     @Override
     @Transactional
     public PurchaseOrderItemResponse updateItem(Long poId, Long itemId, PurchaseOrderItemUpdateRequest req) {
@@ -275,6 +268,17 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         return toResponse(po, items);
     }
 
+    /**
+     * Processes the receipt of goods for a Purchase Order.
+     * This method updates the received quantities for each item in the PO,
+     * adjusts inventory levels, and creates inventory transactions.
+     * The PO status must be DELIVERED to process receipts.
+     *
+     * @param poId The ID of the Purchase Order to receive.
+     * @param req The request containing the received quantities for each line item.
+     * @return A response object for the updated Purchase Order, now marked as COMPLETED.
+     * @throws BadRequestException if the PO is not in DELIVERED status or if received quantities are invalid.
+     */
     @Override
     @Transactional
     public PurchaseOrderResponse receive(Long poId, ReceivePurchaseOrderRequest req) {
@@ -285,7 +289,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 throw new BadRequestException("PO must be in DELIVERED status to process incoming stock.");
             }
 
-            // FIX 1: Explicitly cast/check types to ensure the Map lookup doesn't return null
             Map<Long, Integer> receiveMap = req.lines().stream()
                     .collect(Collectors.toMap(
                             line -> Long.valueOf(line.poItemId()), // Ensure Long key
@@ -365,6 +368,17 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         }
     }
 
+    /**
+     * Manually updates the status of a Purchase Order.
+     * This allows authorized users to override the normal status progression.
+     * It prevents changes to COMPLETED or CANCELLED orders.
+     * If the status is changed to APPROVED, it also handles PDF generation.
+     *
+     * @param poId The ID of the Purchase Order to update.
+     * @param req The request containing the new status.
+     * @return A response object for the updated Purchase Order.
+     * @throws BadRequestException if the status transition is not allowed.
+     */
     @Override
     @Transactional
     public PurchaseOrderResponse updateStatus(Long poId, PurchaseOrderStatusUpdateRequest req) {
