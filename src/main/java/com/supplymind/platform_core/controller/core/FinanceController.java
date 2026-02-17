@@ -90,9 +90,15 @@ public class FinanceController {
 
 
     @GetMapping("/invoices/by-po/{poId}")
-    public InvoiceByPoResponseDTO invoiceByPo(@PathVariable Long poId) {
-        return financeService.getInvoiceByPoId(poId);
+    public ResponseEntity<InvoiceByPoResponseDTO> invoiceByPo(@PathVariable Long poId) {
+        try {
+            return ResponseEntity.ok(financeService.getInvoiceByPoId(poId));
+        } catch (IllegalArgumentException ex) {
+            // No invoice for this PO yet
+            return ResponseEntity.noContent().build(); // 204
+        }
     }
+
     @PostMapping("/suppliers/{supplierId}/demo-enable")
     public ResponseEntity<Void> demoEnable(@PathVariable Long supplierId) {
 

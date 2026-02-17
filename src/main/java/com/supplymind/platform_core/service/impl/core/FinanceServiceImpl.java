@@ -64,9 +64,18 @@ public class FinanceServiceImpl implements FinanceService {
             );
         }
 
-        invoiceRepo.findByPo_PoId(poId).ifPresent(existing -> {
-            throw new IllegalStateException("Invoice already exists for PO: " + poId);
-        });
+        var existing = invoiceRepo.findByPo_PoId(poId);
+        if (existing.isPresent()) {
+            SupplierInvoice inv = existing.get();
+            return new CreateInvoiceFromPoResponseDTO(
+                    inv.getInvoiceId(),
+                    inv.getPo().getPoId(),
+                    inv.getSupplier().getSupplierId(),
+                    inv.getTotalAmount(),
+                    inv.getStatus().name()
+            );
+        }
+
 
         BigDecimal total = po.getTotalAmount();
         if (total == null || total.compareTo(BigDecimal.ZERO) <= 0) {
