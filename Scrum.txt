@@ -394,3 +394,24 @@ Elizabeth
     What will I do today? Go through website and see if any more alerts to change to
     toast. Power-point outline.
     What impediments are blocking me?
+
+    2026-02-17
+      Minh
+        What did I do yesterday? Debugging AI email monitoring.
+        What will I do today? presentation prep
+        What impediments are blocking me? AI not changing PO delivery status.
+
+      Fatemeh
+        What did I do yesterday? Finishing Finance dashboard. debugging
+        What will I do today? presentation prep
+        What impediments are blocking me?
+
+      Jonathan
+        What did I do yesterday? code trimming, testing, starting presentation prep
+        What will I do today? presentation prep
+        What impediments are blocking me?
+
+      Elizabeth
+        What did I do yesterday? debugs, testing, cleanup and powerpoint
+        What will I do today? presentation prep
+        What impediments are blocking me?
