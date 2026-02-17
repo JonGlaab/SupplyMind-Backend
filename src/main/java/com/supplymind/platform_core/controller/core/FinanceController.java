@@ -48,6 +48,18 @@ public class FinanceController {
         return financeService.getPaymentsByInvoice(invoiceId);
     }
 
+    @PostMapping("/payments/{supplierPaymentId}/intent")
+    public CreatePaymentIntentResponseDTO createPaymentIntent(@PathVariable Long supplierPaymentId) {
+        return financeService.createPaymentIntent(supplierPaymentId);
+    }
+
+    @PostMapping("/payments/{supplierPaymentId}/finalize")
+    public ExecutePaymentResponseDTO finalizePayment(@PathVariable Long supplierPaymentId) {
+        return financeService.finalizePayment(supplierPaymentId);
+    }
+
+
+
 
     @PostMapping("/invoices/{invoiceId}/approve")
     public void approveInvoice(@PathVariable Long invoiceId) {

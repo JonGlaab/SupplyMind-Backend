@@ -406,4 +406,124 @@ public class FinanceServiceImpl implements FinanceService {
 
         supplierRepository.save(supplier);
     }
+
+    @Transactional
+    public CreatePaymentIntentResponseDTO createPaymentIntent(Long supplierPaymentId) {
+
+        SupplierPayment sp = supplierPaymentRepo.findById(supplierPaymentId)
+                .orElseThrow(() -> new IllegalArgumentException("SupplierPayment not found: " + supplierPaymentId));
+
+        if (sp.getStatus() != SupplierPaymentStatus.SCHEDULED) {
+            throw new IllegalStateException("Payment must be SCHEDULED to start checkout.");
+        }
+
+        SupplierInvoice invoice = sp.getInvoice();
+        BigDecimal amount = sp.getAmount();
+
+        long amountCents = amount.multiply(BigDecimal.valueOf(100))
+                .setScale(0, RoundingMode.HALF_UP)
+                .longValueExact();
+
+        try {
+            PaymentIntentCreateParams params =
+                    PaymentIntentCreateParams.builder()
+                            .setAmount(amountCents)
+                            .setCurrency(defaultCurrency.toLowerCase())
+                            .setDescription("Supplier payment #" + sp.getSupplierPaymentId())
+                            .setAutomaticPaymentMethods(
+                                    PaymentIntentCreateParams.AutomaticPaymentMethods.builder()
+                                            .setEnabled(true)
+                                            .setAllowRedirects(
+                                                    PaymentIntentCreateParams.AutomaticPaymentMethods.AllowRedirects.NEVER
+                                            )
+                                            .build()
+                            )
+                            .putMetadata("supplierPaymentId", String.valueOf(sp.getSupplierPaymentId()))
+                            .putMetadata("invoiceId", String.valueOf(invoice.getInvoiceId()))
+                            .build();
+
+            RequestOptions opts = RequestOptions.builder()
+                    .setIdempotencyKey("pi_init_" + sp.getSupplierPaymentId())
+                    .build();
+
+            PaymentIntent pi = PaymentIntent.create(params, opts);
+
+            sp.setStripePaymentIntentId(pi.getId());
+            sp.setStatus(SupplierPaymentStatus.PROCESSING);
+            supplierPaymentRepo.save(sp);
+
+            return CreatePaymentIntentResponseDTO.builder()
+                    .supplierPaymentId(sp.getSupplierPaymentId())
+                    .stripePaymentIntentId(pi.getId())
+                    .clientSecret(pi.getClientSecret())
+                    .status(pi.getStatus())
+                    .build();
+
+        } catch (StripeException e) {
+            throw new RuntimeException("Stripe create PI failed: " + e.getMessage());
+        }
+    }
+
+    @Transactional
+    public ExecutePaymentResponseDTO finalizePayment(Long supplierPaymentId) {
+
+        SupplierPayment sp = supplierPaymentRepo.findById(supplierPaymentId)
+                .orElseThrow(() -> new IllegalArgumentException("SupplierPayment not found"));
+
+        if (sp.getStripePaymentIntentId() == null) {
+            throw new IllegalStateException("No Stripe PaymentIntent found for this payment.");
+        }
+
+        try {
+            PaymentIntent pi = PaymentIntent.retrieve(sp.getStripePaymentIntentId());
+
+            if (!"succeeded".equals(pi.getStatus())) {
+                return ExecutePaymentResponseDTO.builder()
+                        .supplierPaymentId(sp.getSupplierPaymentId())
+                        .status(pi.getStatus().toUpperCase())
+                        .stripePaymentIntentId(pi.getId())
+                        .message("Payment not succeeded yet. Stripe status: " + pi.getStatus())
+                        .build();
+            }
+
+            SupplierInvoice invoice = sp.getInvoice();
+            BigDecimal amount = sp.getAmount();
+
+            sp.setStatus(SupplierPaymentStatus.PAID);
+            sp.setExecutedAt(Instant.now());
+            supplierPaymentRepo.save(sp);
+
+            BigDecimal newPaid = invoice.getPaidAmount().add(amount);
+            invoice.setPaidAmount(newPaid);
+
+            if (newPaid.compareTo(invoice.getTotalAmount()) >= 0) {
+                invoice.setStatus(SupplierInvoiceStatus.PAID);
+                invoice.setPaidAt(Instant.now());
+            } else {
+                invoice.setStatus(SupplierInvoiceStatus.PARTIALLY_PAID);
+            }
+
+            supplierInvoiceRepo.save(invoice);
+
+            return ExecutePaymentResponseDTO.builder()
+                    .supplierPaymentId(sp.getSupplierPaymentId())
+                    .status("PAID")
+                    .stripePaymentIntentId(pi.getId())
+                    .message("Payment finalized successfully")
+                    .build();
+
+        } catch (StripeException e) {
+            sp.setStatus(SupplierPaymentStatus.FAILED);
+            sp.setFailureReason(e.getMessage());
+            supplierPaymentRepo.save(sp);
+
+            return ExecutePaymentResponseDTO.builder()
+                    .supplierPaymentId(sp.getSupplierPaymentId())
+                    .status("FAILED")
+                    .message("Stripe finalize failed: " + e.getMessage())
+                    .build();
+        }
+    }
+
+
 }
