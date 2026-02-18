@@ -30,7 +30,7 @@ public class EmailAutomationService {
     private final Pattern PO_PATTERN = Pattern.compile("(?i)(?:Purchase\\s+Order|PO)[-\\s#]*(\\d+)");
 
     // Added initialDelay to give the login screen 30 seconds of peace on startup
-    @Scheduled(initialDelay = 30000, fixedDelay = 60000)
+    // @Scheduled(initialDelay = 30000, fixedDelay = 60000) //TODO remove note or try something else if this fails
     public void scanAndRouteEmails() {
         log.debug("🕵️ Starting Inbox & Sent Scan...");
         scanFolderAndRoute("INBOX", true);
