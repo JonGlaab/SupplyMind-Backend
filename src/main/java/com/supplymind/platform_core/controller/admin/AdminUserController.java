@@ -49,6 +49,7 @@ public class AdminUserController {
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setRole(request.getRole() != null ? request.getRole() : Role.STAFF);
         user.setIs2faEnabled(false);
+        user.setNeedsPasswordChange(true);
 
         userRepository.save(user);
         return ResponseEntity.ok("User created successfully by Admin.");
