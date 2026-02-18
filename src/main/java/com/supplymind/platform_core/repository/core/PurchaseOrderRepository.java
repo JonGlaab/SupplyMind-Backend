@@ -21,6 +21,14 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
             "LEFT JOIN FETCH po.warehouse w " +
             "LEFT JOIN FETCH po.buyer b ";
 
+    // 1. Get ONLY the ID and Status (Zero Joins)
+    @Query("SELECT p.status FROM PurchaseOrder p WHERE p.poId = :id")
+    Optional<PurchaseOrderStatus> findStatusById(@Param("id") Long id);
+
+    // 2. Get ONLY the fields needed for the Email Label (Zero Joins)
+    @Query("SELECT p.poId FROM PurchaseOrder p WHERE p.poId = :id")
+    Optional<Long> existsByPoId(@Param("id") Long id);
+
     @Query(value = FIND_PO_WITH_DETAILS,
             countQuery = "SELECT count(po) FROM PurchaseOrder po")
     Page<PurchaseOrder> findAllWithDetails(Pageable pageable);

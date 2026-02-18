@@ -29,28 +29,18 @@ public class EmailAutomationService {
 
     private final Pattern PO_PATTERN = Pattern.compile("(?i)(?:Purchase\\s+Order|PO)[-\\s#]*(\\d+)");
 
-    // Run every 60 seconds
-    @Scheduled(fixedDelay = 60000)
-    //@Transactional //TODO add back if needed but taking it out to test
+    // Added initialDelay to give the login screen 30 seconds of peace on startup
+    @Scheduled(initialDelay = 30000, fixedDelay = 60000)
     public void scanAndRouteEmails() {
         log.debug("🕵️ Starting Inbox & Sent Scan...");
-
-        // 1. Scan Supplier Replies (INBOX) -> MOVE to Folder
         scanFolderAndRoute("INBOX", true);
-
-        // 2. Scan My Sent Emails -> COPY to Folder
-        // Try modern/standard name
         scanFolderAndRoute("[Gmail]/Sent Mail", false);
-
-        // Try legacy/migrated name
         scanFolderAndRoute("[Gmail]/Sent", false);
     }
 
     private void scanFolderAndRoute(String sourceFolder, boolean isMoveOperation) {
         try {
             List<InboxMessage> messages = inboxProvider.fetchMessages(sourceFolder);
-
-            // If folder doesn't exist or is empty, just return
             if (messages.isEmpty()) return;
 
             for (InboxMessage msg : messages) {
@@ -60,37 +50,32 @@ public class EmailAutomationService {
                 if (matcher.find()) {
                     Long poId = Long.parseLong(matcher.group(1));
 
-                    poRepo.findById(poId).ifPresent(po -> {
-                        String targetLabel = "SupplyMind/PO-" + poId;
+                    // ✅ STEP 1: Use the Slim check (No Joins, connection released immediately)
+                    if (poRepo.existsByPoId(poId).isEmpty()) continue;
 
-                        boolean isSupplierReply = !msg.getFrom().toLowerCase().contains("supplymind");
+                    String targetLabel = "SupplyMind/PO-" + poId;
+                    boolean isSupplierReply = !msg.getFrom().toLowerCase().contains("supplymind");
 
-                        // --- LOGIC A: AI ANALYSIS (Only for Incoming Supplier Replies) ---
-                        if (isMoveOperation && isSupplierReply) {
-                            try {
-                                handleSupplierReply(po, msg);
-                            } catch (Exception e) {
-                                log.error("⚠️ AI Analysis failed for PO #{} but proceeding with move.", poId, e);
-                            }
+                    // ✅ STEP 2: Slow Network I/O (Happens while DB pool is free)
+                    try {
+                        if (isMoveOperation) {
+                            inboxProvider.moveMessage(msg.getMessageId(), sourceFolder, targetLabel);
+                            log.info("✅ Moved message for PO #{}", poId);
+                        } else {
+                            inboxProvider.copyMessage(msg.getMessageId(), sourceFolder, targetLabel);
+                            log.info("✅ Copied sent message for PO #{}", poId);
                         }
 
-                        // --- LOGIC B: ROUTING & BROADCAST ---
-                        try {
-                            if (isMoveOperation) {
-                                inboxProvider.moveMessage(msg.getMessageId(), sourceFolder, targetLabel);
-                                log.info("✅ Moved message for PO #{} to {}", poId, targetLabel);
-                            } else {
-                                inboxProvider.copyMessage(msg.getMessageId(), sourceFolder, targetLabel);
-                                log.info("✅ Copied sent message for PO #{} to {}", poId, targetLabel);
-                            }
+                        messagingTemplate.convertAndSend("/topic/po/" + poId, msg);
+                    } catch (Exception e) {
+                        log.error("❌ Email I/O failed for PO #{}", poId, e);
+                        continue;
+                    }
 
-                            messagingTemplate.convertAndSend("/topic/po/" + poId, msg);
-                            log.info("📡 Broadcasted WebSocket event for PO #{}", poId);
-
-                        } catch (Exception e) {
-                            log.error("❌ Failed to move/copy/broadcast email for PO #" + poId, e);
-                        }
-                    });
+                    // ✅ STEP 3: Transactional DB Update (Only if needed)
+                    if (isMoveOperation && isSupplierReply) {
+                        updateStatusWithAi(poId, msg);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -98,29 +83,35 @@ public class EmailAutomationService {
         }
     }
 
-    private void handleSupplierReply(com.supplymind.platform_core.model.core.PurchaseOrder po, InboxMessage msg) {
-        log.info("📧 Analyzing Supplier Reply for PO #{}", po.getPoId());
+    // This method is now the only place that holds a short-lived transaction
+    @Transactional
+    public void updateStatusWithAi(Long poId, InboxMessage msg) {
+        // We use findById here because we actually need to update the object
+        poRepo.findById(poId).ifPresent(po -> {
+            log.info("📧 Analyzing Supplier Reply for PO #{}", poId);
+            AiStatusScanner.StatusScanResult analysis = aiScanner.scanEmailForStatus(msg.getSnippet());
 
-        AiStatusScanner.StatusScanResult analysis = aiScanner.scanEmailForStatus(msg.getSnippet());
+            if (analysis.deliveryDate() != null) {
+                po.setExpectedDeliveryDate(analysis.deliveryDate().atStartOfDay(ZoneId.systemDefault()).toInstant());
+            }
 
-        if (analysis.deliveryDate() != null) {
-            po.setExpectedDeliveryDate(analysis.deliveryDate().atStartOfDay(ZoneId.systemDefault()).toInstant());
-        }
-
-        if (po.getStatus() == PurchaseOrderStatus.EMAIL_SENT || po.getStatus() == PurchaseOrderStatus.SUPPLIER_REPLIED) {
+            // Logic to update status based on analysis...
             try {
                 PurchaseOrderStatus detected = PurchaseOrderStatus.valueOf(analysis.status());
-                // Update status if relevant...
-                if (detected == PurchaseOrderStatus.DELAY_EXPECTED ||
-                        detected == PurchaseOrderStatus.CONFIRMED ||
-                        detected == PurchaseOrderStatus.SUPPLIER_REPLIED ||
-                        detected == PurchaseOrderStatus.SHIPPED) {
+                List<PurchaseOrderStatus> validTransitions = List.of(
+                        PurchaseOrderStatus.DELAY_EXPECTED,
+                        PurchaseOrderStatus.CONFIRMED,
+                        PurchaseOrderStatus.SUPPLIER_REPLIED,
+                        PurchaseOrderStatus.SHIPPED
+                );
+
+                if (validTransitions.contains(detected)) {
                     po.setStatus(detected);
                 }
             } catch (Exception ignored) {}
-        }
 
-        po.setLastActivityAt(Instant.now());
-        poRepo.save(po);
+            po.setLastActivityAt(Instant.now());
+            poRepo.save(po);
+        });
     }
 }
