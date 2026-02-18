@@ -206,13 +206,11 @@ public class FinanceServiceImpl implements FinanceService {
             supplierPaymentRepo.save(sp);
 
             String testPaymentMethod = "pm_card_visa";
-
             PaymentIntentCreateParams params =
                     PaymentIntentCreateParams.builder()
                             .setAmount(amountCents)
                             .setCurrency(defaultCurrency.toLowerCase())
-
-                            // ✅ IMPORTANT FIX: prevent redirect-based PMs → no return_url needed
+                            // prevent redirect-based PMs → no return_url needed
                             .setAutomaticPaymentMethods(
                                     PaymentIntentCreateParams.AutomaticPaymentMethods.builder()
                                             .setEnabled(true)
@@ -221,8 +219,7 @@ public class FinanceServiceImpl implements FinanceService {
                                             )
                                             .build()
                             )
-
-                            // ✅ test payment method + confirm now
+                            // test payment method + confirm now
                             .setPaymentMethod(testPaymentMethod)
                             .setConfirm(true)
 
