@@ -34,15 +34,12 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/error").permitAll()
 
+                        .requestMatchers("/", "/error").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
-
-                        // Auth endpoints stay public
                         .requestMatchers("/auth/**").permitAll()
 
-                        // ADMIN
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                         // STAFF / ALL
@@ -53,14 +50,6 @@ public class SecurityConfig {
                                 "/api/core/**",
                                 "/api/storage/**",
                                 "/api/mobile/**").authenticated()
-                        //Currently mobile is for everyone, TODO: change if needed
-
-                        // PO --  looks like PO controllers are all in core.
-                        // I don't want to re-route them now but it could be cleaned up
-                        // or we specify which paths exactly can be used TODO
-                        //.requestMatchers(
-                        //        "/api/procurement/**")
-                        //.hasAnyRole("PROCUREMENT_OFFICER", "MANAGER")
 
                         // MANAGER ONLY
                         .requestMatchers(

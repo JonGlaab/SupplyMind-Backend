@@ -31,7 +31,7 @@ public class EmailAutomationService {
 
     // Run every 60 seconds
     @Scheduled(fixedDelay = 60000)
-    @Transactional
+    //@Transactional //TODO add back if needed but taking it out to test
     public void scanAndRouteEmails() {
         log.debug("🕵️ Starting Inbox & Sent Scan...");
 
