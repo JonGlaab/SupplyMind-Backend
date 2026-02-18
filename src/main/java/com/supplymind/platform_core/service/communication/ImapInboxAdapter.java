@@ -27,13 +27,22 @@ public class ImapInboxAdapter implements InboxProvider {
     @Value("${spring.mail.password}")
     private String password;
 
+    // 1. CONFIG: Scan Depth (Keep this high)
+    private static final int SCAN_DEPTH = 2000;
     private static final String IMAP_HOST = "imap.gmail.com";
 
-    private static final int SCAN_DEPTH = 2000;
-
+    // 2. REGEX: Identify HTML Tags
     private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]+>");
+
+    // 3. REGEX: Identify Gmail's hidden quote block (The "History" container)
+    private static final Pattern GMAIL_QUOTE_PATTERN = Pattern.compile(
+            "(?s)<div class=\"gmail_quote\">.*?</div>",
+            Pattern.CASE_INSENSITIVE
+    );
+
+    // 4. REGEX: Aggressive Splitter for "On [Date] [User] wrote:" lines
     private static final Pattern REPLY_SPLIT_PATTERN = Pattern.compile(
-            "(\\nOn\\s.+,.+wrote:|\\nFrom:\\s.+|\\nSent:\\s.+|\\n-----Original Message-----)",
+            "(\\nOn\\s.+wrote:|\\nFrom:\\s.+|\\nSent:\\s.+|\\n-----Original Message-----|\\n_{5,})",
             Pattern.CASE_INSENSITIVE
     );
 
@@ -69,7 +78,6 @@ public class ImapInboxAdapter implements InboxProvider {
             if (!folder.exists()) return result;
 
             folder.open(Folder.READ_ONLY);
-
             int count = folder.getMessageCount();
             if (count == 0) return result;
 
@@ -108,6 +116,7 @@ public class ImapInboxAdapter implements InboxProvider {
                     String fullBody = textBody.toString().trim();
                     if (fullBody.isEmpty()) fullBody = "(No text content found)";
 
+                    // 5. CLEANUP: Cut the history off
                     String cleanBody = cleanReplyBody(fullBody);
                     dto.setBody(cleanBody);
                     dto.setSnippet(cleanBody.length() > 150 ? cleanBody.substring(0, 150) + "..." : cleanBody);
@@ -127,22 +136,58 @@ public class ImapInboxAdapter implements InboxProvider {
         return result;
     }
 
+    /**
+     * EXTRACT CONTENT - FIX FOR DOUBLING
+     * Logic: If Multipart/Alternative, pick HTML (or Text) and STOP. Do not read both.
+     */
     private void extractContent(Part part, StringBuilder textBody, List<String> attachments) throws Exception {
         if (part.isMimeType("text/plain")) {
-            textBody.append((String) part.getContent());
+            // Only add if we haven't found HTML content yet (simple heuristic)
+            if (textBody.length() == 0) {
+                textBody.append((String) part.getContent());
+            }
         }
         else if (part.isMimeType("text/html")) {
+            // Prefer HTML, clear any previous plain text if we found "better" content
             String html = (String) part.getContent();
+
+            // FIX HISTORY: Remove <div class="gmail_quote"> BEFORE stripping tags
+            html = GMAIL_QUOTE_PATTERN.matcher(html).replaceAll("");
+
             html = html.replaceAll("(?i)<br\\s*/?>", "\n")
                     .replaceAll("(?i)</p>", "\n\n")
                     .replaceAll("(?i)</div>", "\n");
+
             String cleanText = HTML_TAG_PATTERN.matcher(html).replaceAll("").trim();
             cleanText = cleanText.replace("&nbsp;", " ")
                     .replace("&amp;", "&").replace("&quot;", "\"")
                     .replace("&gt;", ">").replace("&lt;", "<");
+
+            // Overwrite plain text with this cleaner version if both existed
+            textBody.setLength(0);
             textBody.append(cleanText);
         }
+        else if (part.isMimeType("multipart/alternative")) {
+            Multipart multi = (Multipart) part.getContent();
+            Part bestPart = null;
+
+            // Prefer HTML
+            for (int i = 0; i < multi.getCount(); i++) {
+                Part bodyPart = multi.getBodyPart(i);
+                if (bodyPart.isMimeType("text/html")) {
+                    bestPart = bodyPart;
+                    break;
+                }
+                if (bodyPart.isMimeType("text/plain")) {
+                    bestPart = bodyPart;
+                }
+            }
+            if (bestPart != null) {
+                extractContent(bestPart, textBody, attachments);
+            }
+        }
         else if (part.isMimeType("multipart/*")) {
+            // Standard Mixed (e.g. Attachments). Process all.
             Multipart multi = (Multipart) part.getContent();
             for (int i = 0; i < multi.getCount(); i++) {
                 extractContent(multi.getBodyPart(i), textBody, attachments);
@@ -154,6 +199,10 @@ public class ImapInboxAdapter implements InboxProvider {
         }
     }
 
+    /**
+     * CLEAN BODY - FIX FOR "TOO LONG"
+     * Cuts text when it sees "On ... wrote:"
+     */
     private String cleanReplyBody(String body) {
         Matcher matcher = REPLY_SPLIT_PATTERN.matcher(body);
         if (matcher.find()) {
@@ -180,34 +229,26 @@ public class ImapInboxAdapter implements InboxProvider {
             store = connect();
             sourceFolder = store.getFolder(sourceLabel);
             if (!sourceFolder.exists()) return;
-            // READ_WRITE needed for moving (flagging as deleted)
             sourceFolder.open(Folder.READ_WRITE);
 
             targetFolder = store.getFolder(targetLabel);
             if (!targetFolder.exists()) {
-                boolean created = targetFolder.create(Folder.HOLDS_MESSAGES);
-                if (!created) log.warn("Failed to create folder: {}", targetLabel);
+                targetFolder.create(Folder.HOLDS_MESSAGES);
             }
             targetFolder.open(Folder.READ_WRITE);
 
-            // Avoid duplicating if already there
-            if (targetFolder.search(new HeaderTerm("Message-ID", messageId)).length > 0) {
-                log.debug("Message {} already exists in {}", messageId, targetLabel);
-                return;
-            }
+            // Check existence
+            if (targetFolder.search(new HeaderTerm("Message-ID", messageId)).length > 0) return;
 
             Message[] messages = sourceFolder.search(new HeaderTerm("Message-ID", messageId));
             if (messages.length > 0) {
                 sourceFolder.copyMessages(messages, targetFolder);
                 if (isMove) {
                     messages[0].setFlag(Flags.Flag.DELETED, true);
-                    log.info("Moved message {} from {} to {}", messageId, sourceLabel, targetLabel);
-                } else {
-                    log.info("Copied message {} from {} to {}", messageId, sourceLabel, targetLabel);
                 }
             }
         } catch (Exception e) {
-            log.error("Failed to move/copy message", e);
+            log.error("Failed to move/copy", e);
         } finally {
             closeQuietly(targetFolder, null);
             closeQuietly(sourceFolder, store);
@@ -241,7 +282,6 @@ public class ImapInboxAdapter implements InboxProvider {
                 (part.getFileName() != null && part.getFileName().equalsIgnoreCase(fileName))) {
             return readInputStream(part.getInputStream());
         }
-
         if (part.isMimeType("multipart/*")) {
             Multipart multi = (Multipart) part.getContent();
             for (int i = 0; i < multi.getCount(); i++) {
